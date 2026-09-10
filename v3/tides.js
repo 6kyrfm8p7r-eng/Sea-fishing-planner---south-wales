@@ -147,99 +147,354 @@
 
   }
 
+/* =======================================================
+   TURNING-POINT INTERPOLATION
 
-  /* =======================================================
-     RAW TURNING POINT DETECTION
-     ======================================================= */
+   The Open-Meteo sea-level series is normally sampled
+   every 15 minutes.
 
-  function detectTurningPoints(points) {
+   A real high or low water can occur between those samples.
 
-    const series =
-      smoothSeaLevelSeries(
-        points,
-        1
-      );
+   We use the level immediately before, at, and after the
+   detected turning point to estimate the mathematical peak
+   or trough between them.
 
-    if (series.length < 3) {
-      return [];
-    }
+   This improves OUR timing resolution without pretending
+   that the underlying model is an official tide table.
+   ======================================================= */
 
-    const events = [];
+function interpolateTurningPoint(
+  previous,
+  current,
+  next,
+  previousLevel,
+  currentLevel,
+  nextLevel
+) {
 
-    for (
-      let i = 1;
-      i < series.length - 1;
-      i++
-    ) {
+  const previousTime =
+    toTime(
+      previous?.time
+    );
 
-      const previous =
-        series[i - 1];
+  const currentTime =
+    toTime(
+      current?.time
+    );
 
-      const current =
-        series[i];
-
-      const next =
-        series[i + 1];
-
-      const prevLevel =
-        previous.smoothedSeaLevel ??
-        previous.seaLevel;
-
-      const currentLevel =
-        current.smoothedSeaLevel ??
-        current.seaLevel;
-
-      const nextLevel =
-        next.smoothedSeaLevel ??
-        next.seaLevel;
+  const nextTime =
+    toTime(
+      next?.time
+    );
 
 
-      const isHigh =
-        currentLevel >= prevLevel &&
-        currentLevel > nextLevel;
+  if (
+    !previousTime ||
+    !currentTime ||
+    !nextTime
+  ) {
 
-      const isLow =
-        currentLevel <= prevLevel &&
-        currentLevel < nextLevel;
-
-
-      if (
-        !isHigh &&
-        !isLow
-      ) {
-        continue;
-      }
-
-
-      events.push({
-
-        type:
-          isHigh
-            ? "high"
-            : "low",
-
-        time:
-          current.time,
-
-        date:
-          current.date,
-
-        seaLevel:
-          current.seaLevel,
-
-        smoothedSeaLevel:
-          currentLevel,
-
-        source:
-          "Open-Meteo sea level model"
-
-      });
-
-    }
-
-    return events;
+    return {
+      time: current.time,
+      date: current.date,
+      offsetMinutes: 0
+    };
 
   }
+
+
+  /*
+   Parabolic interpolation.
+
+   For three equally spaced samples:
+
+               y(-1), y(0), y(+1)
+
+   the vertex offset from the centre sample is:
+
+       0.5 × (y(-1) - y(+1))
+       ---------------------
+       y(-1) - 2y(0) + y(+1)
+
+   An offset of:
+      -1 = previous sample
+       0 = centre sample
+      +1 = next sample
+  */
+
+  const denominator =
+    previousLevel -
+    (2 * currentLevel) +
+    nextLevel;
+
+
+  if (
+    !Number.isFinite(denominator) ||
+    Math.abs(denominator) <
+      0.0000001
+  ) {
+
+    return {
+      time: current.time,
+      date: current.date,
+      offsetMinutes: 0
+    };
+
+  }
+
+
+  let offset =
+    0.5 *
+    (
+      previousLevel -
+      nextLevel
+    ) /
+    denominator;
+
+
+  /*
+   Defensive clamp.
+
+   We detected the centre point as the turning point,
+   so the refined vertex should remain between its
+   neighbouring samples.
+  */
+
+  offset =
+    Math.max(
+      -1,
+      Math.min(
+        1,
+        offset
+      )
+    );
+
+
+  /*
+   Calculate representative spacing.
+
+   This also allows the same interpolation to work if
+   we fall back to hourly sea-level data.
+  */
+
+  const previousSpacing =
+    currentTime.getTime() -
+    previousTime.getTime();
+
+
+  const nextSpacing =
+    nextTime.getTime() -
+    currentTime.getTime();
+
+
+  const sampleSpacing =
+    (
+      previousSpacing +
+      nextSpacing
+    ) /
+    2;
+
+
+  if (
+    !Number.isFinite(sampleSpacing) ||
+    sampleSpacing <= 0
+  ) {
+
+    return {
+      time: current.time,
+      date: current.date,
+      offsetMinutes: 0
+    };
+
+  }
+
+
+  const refinedDate =
+    new Date(
+      currentTime.getTime() +
+      (
+        offset *
+        sampleSpacing
+      )
+    );
+
+
+  const offsetMinutes =
+    (
+      refinedDate.getTime() -
+      currentTime.getTime()
+    ) /
+    60000;
+
+
+  return {
+
+    /*
+     Keep the same local-style timestamp format already
+     used throughout the app.
+
+     We use the Date object itself internally, while the
+     ISO-style string remains compatible with the rest
+     of the tide engine.
+    */
+
+    time:
+      refinedDate,
+
+    date:
+      refinedDate,
+
+    offsetMinutes
+
+  };
+
+}
+
+
+/* =======================================================
+   RAW TURNING POINT DETECTION
+   ======================================================= */
+
+function detectTurningPoints(points) {
+
+  const series =
+    smoothSeaLevelSeries(
+      points,
+      1
+    );
+
+
+  if (
+    series.length <
+    3
+  ) {
+
+    return [];
+
+  }
+
+
+  const events = [];
+
+
+  for (
+    let i = 1;
+    i < series.length - 1;
+    i++
+  ) {
+
+    const previous =
+      series[i - 1];
+
+    const current =
+      series[i];
+
+    const next =
+      series[i + 1];
+
+
+    const previousLevel =
+      previous.smoothedSeaLevel ??
+      previous.seaLevel;
+
+
+    const currentLevel =
+      current.smoothedSeaLevel ??
+      current.seaLevel;
+
+
+    const nextLevel =
+      next.smoothedSeaLevel ??
+      next.seaLevel;
+
+
+    const isHigh =
+      currentLevel >=
+        previousLevel &&
+      currentLevel >
+        nextLevel;
+
+
+    const isLow =
+      currentLevel <=
+        previousLevel &&
+      currentLevel <
+        nextLevel;
+
+
+    if (
+      !isHigh &&
+      !isLow
+    ) {
+
+      continue;
+
+    }
+
+
+    const refined =
+      interpolateTurningPoint(
+
+        previous,
+
+        current,
+
+        next,
+
+        previousLevel,
+
+        currentLevel,
+
+        nextLevel
+
+      );
+
+
+    events.push({
+
+      type:
+        isHigh
+          ? "high"
+          : "low",
+
+      /*
+       Refined model-derived turning point.
+      */
+
+      time:
+        refined.time,
+
+      date:
+        refined.date,
+
+      /*
+       Raw centre sample retained for diagnostics.
+      */
+
+      rawTime:
+        current.time,
+
+      timingAdjustmentMinutes:
+        refined.offsetMinutes,
+
+      seaLevel:
+        current.seaLevel,
+
+      smoothedSeaLevel:
+        currentLevel,
+
+      source:
+        "Open-Meteo sea level model — interpolated estimate"
+
+    });
+
+  }
+
+
+  return events;
+
+}
+
 
 
   /* =======================================================
