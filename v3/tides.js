@@ -806,7 +806,277 @@ function detectTurningPoints(points) {
 
   }
 
+/* =======================================================
+   LOCAL TIDE CALIBRATION LAYER
 
+   PURPOSE
+   -------
+   Open-Meteo provides the continuous sea-level curve.
+
+   Our interpolation refines the turning point between
+   model samples.
+
+   This layer allows individual marks to receive a LOCAL
+   timing correction derived from an authoritative tidal
+   reference station.
+
+   IMPORTANT
+   ---------
+   No guessed offsets are applied here.
+
+   Until a mark has a verified calibration entry,
+   offsetMinutes remains zero and existing tide behaviour
+   is unchanged.
+   ======================================================= */
+
+
+/*
+ Example future entry:
+
+ aberthaw: {
+   stationId: "verified-reference-id",
+   stationName: "Verified reference station",
+   offsetMinutes: 12,
+   verified: true,
+   source: "UKHO"
+ }
+
+ Do NOT populate these from guesses.
+*/
+
+const MARK_TIDE_CALIBRATIONS = {
+
+};
+
+
+function getTideCalibration(
+  markOrId
+) {
+
+  let id = "";
+
+
+  if (
+    typeof markOrId === "string"
+  ) {
+
+    id =
+      markOrId;
+
+  }
+  else if (
+    markOrId &&
+    typeof markOrId === "object"
+  ) {
+
+    id =
+      markOrId.id || "";
+
+  }
+
+
+  const calibration =
+    id
+      ? MARK_TIDE_CALIBRATIONS[id]
+      : null;
+
+
+  /*
+   Only verified calibration data is permitted to
+   alter tide timing.
+  */
+
+  if (
+    !calibration ||
+    calibration.verified !== true ||
+    !Number.isFinite(
+      Number(
+        calibration.offsetMinutes
+      )
+    )
+  ) {
+
+    return {
+
+      stationId:
+        null,
+
+      stationName:
+        null,
+
+      offsetMinutes:
+        0,
+
+      verified:
+        false,
+
+      source:
+        null
+
+    };
+
+  }
+
+
+  return {
+
+    stationId:
+      calibration.stationId ||
+      null,
+
+    stationName:
+      calibration.stationName ||
+      null,
+
+    offsetMinutes:
+      Number(
+        calibration.offsetMinutes
+      ),
+
+    verified:
+      true,
+
+    source:
+      calibration.source ||
+      "Verified tide reference"
+
+  };
+
+}
+
+
+function calibrateTideEvent(
+  event,
+  markOrId
+) {
+
+  if (!event) {
+
+    return null;
+
+  }
+
+
+  const calibration =
+    getTideCalibration(
+      markOrId
+    );
+
+
+  /*
+   Preserve the original model-derived event even
+   when there is no verified calibration.
+  */
+
+  if (
+    !calibration.verified ||
+    calibration.offsetMinutes === 0
+  ) {
+
+    return {
+
+      ...event,
+
+      modelTime:
+        event.time,
+
+      calibrationMinutes:
+        0,
+
+      calibrated:
+        false,
+
+      calibrationSource:
+        null,
+
+      referenceStationId:
+        null,
+
+      referenceStationName:
+        null
+
+    };
+
+  }
+
+
+  const original =
+    toTime(
+      event.time
+    );
+
+
+  if (!original) {
+
+    return {
+
+      ...event,
+
+      modelTime:
+        event.time,
+
+      calibrationMinutes:
+        0,
+
+      calibrated:
+        false
+
+    };
+
+  }
+
+
+  const calibratedDate =
+    new Date(
+      original.getTime() +
+      (
+        calibration.offsetMinutes *
+        60000
+      )
+    );
+
+
+  return {
+
+    ...event,
+
+    /*
+     Final tide time used by Fishing DNA.
+    */
+
+    time:
+      calibratedDate,
+
+    date:
+      calibratedDate,
+
+
+    /*
+     Preserve the interpolated model time for
+     diagnostics and later validation.
+    */
+
+    modelTime:
+      event.time,
+
+    calibrationMinutes:
+      calibration.offsetMinutes,
+
+    calibrated:
+      true,
+
+    calibrationSource:
+      calibration.source,
+
+    referenceStationId:
+      calibration.stationId,
+
+    referenceStationName:
+      calibration.stationName
+
+  };
+
+}
   /* =======================================================
      FISHING DNA EVENT SELECTION
      ======================================================= */
@@ -876,124 +1146,164 @@ function detectTurningPoints(points) {
      This fixes the old V2 bug where a nearly-finished
      or already-finished prime window could be selected.
      ======================================================= */
+function findNextPrimeWindow(
+  events,
+  markOrId,
+  now = new Date()
+) {
 
-  function findNextPrimeWindow(
-    events,
-    markOrId,
-    now = new Date()
-  ) {
-
-    const currentTime =
-      toTime(now);
-
-    if (!currentTime) {
-      return null;
-    }
-
-    const tideType =
-      getRelevantTideType(
-        markOrId
-      );
-
-    const candidates =
-      eventsByType(
-        events,
-        tideType
-      );
-
-    for (
-      const event of candidates
-    ) {
-
-      const window =
-        getPrimeWindowForEvent(
-          event,
-          markOrId
-        );
-
-      if (!window) {
-        continue;
-      }
+  const currentTime =
+    toTime(now);
 
 
-      /*
-       Ignore any prime window which has completely passed.
-      */
-
-      if (
-        window.end <
-        currentTime
-      ) {
-        continue;
-      }
-
-
-      const status =
-
-        window.start >
-        currentTime
-          ? "upcoming"
-          : "active";
-
-
-      return {
-
-        event,
-        window,
-
-        status,
-
-        isActive:
-          status === "active",
-
-        isUpcoming:
-          status === "upcoming"
-
-      };
-
-    }
+  if (!currentTime) {
 
     return null;
 
   }
 
 
-  /* =======================================================
-     FIND PRIME WINDOWS WITHIN A FORECAST PERIOD
-     ======================================================= */
+  const tideType =
+    getRelevantTideType(
+      markOrId
+    );
 
-  function getPrimeWindowsBetween(
-    events,
-    markOrId,
-    start,
-    end
+
+  const candidates =
+    eventsByType(
+      events,
+      tideType
+    );
+
+
+  for (
+    const rawEvent of candidates
   ) {
 
-    const startDate =
-      toTime(start);
+    /*
+     Apply a verified local correction if one exists.
 
-    const endDate =
-      toTime(end);
+     Otherwise this returns the same model-derived time.
+    */
 
-    if (
-      !startDate ||
-      !endDate
-    ) {
-      return [];
-    }
-
-
-    const tideType =
-      getRelevantTideType(
+    const event =
+      calibrateTideEvent(
+        rawEvent,
         markOrId
       );
 
 
-    return eventsByType(
-      events,
-      tideType
-    )
-      .map(event => {
+    const window =
+      getPrimeWindowForEvent(
+        event,
+        markOrId
+      );
+
+
+    if (!window) {
+
+      continue;
+
+    }
+
+
+    if (
+      window.end <
+      currentTime
+    ) {
+
+      continue;
+
+    }
+
+
+    const status =
+
+      window.start >
+      currentTime
+
+        ? "upcoming"
+        : "active";
+
+
+    return {
+
+      event,
+
+      window,
+
+      status,
+
+      isActive:
+        status ===
+        "active",
+
+      isUpcoming:
+        status ===
+        "upcoming"
+
+    };
+
+  }
+
+
+  return null;
+
+}
+
+
+  /* =======================================================
+     FIND PRIME WINDOWS WITHIN A FORECAST PERIOD
+     ======================================================= */
+function getPrimeWindowsBetween(
+  events,
+  markOrId,
+  start,
+  end
+) {
+
+  const startDate =
+    toTime(start);
+
+  const endDate =
+    toTime(end);
+
+
+  if (
+    !startDate ||
+    !endDate
+  ) {
+
+    return [];
+
+  }
+
+
+  const tideType =
+    getRelevantTideType(
+      markOrId
+    );
+
+
+  return eventsByType(
+    events,
+    tideType
+  )
+
+    .map(
+      rawEvent => {
+
+        /*
+         Apply verified local calibration before
+         constructing the Fishing DNA window.
+        */
+
+        const event =
+          calibrateTideEvent(
+            rawEvent,
+            markOrId
+          );
+
 
         const window =
           getPrimeWindowForEvent(
@@ -1001,25 +1311,34 @@ function detectTurningPoints(points) {
             markOrId
           );
 
+
         if (!window) {
+
           return null;
+
         }
 
 
         const overlaps =
 
-          window.end >= startDate &&
-          window.start <= endDate;
+          window.end >=
+            startDate &&
+
+          window.start <=
+            endDate;
 
 
         if (!overlaps) {
+
           return null;
+
         }
 
 
         return {
 
           event,
+
           window,
 
           tideReference:
@@ -1027,10 +1346,12 @@ function detectTurningPoints(points) {
 
         };
 
-      })
-      .filter(Boolean);
+      }
+    )
 
-  }
+    .filter(Boolean);
+
+}
 
 
   /* =======================================================
@@ -1201,5 +1522,7 @@ function detectTurningPoints(points) {
   console.log(
     "Sea Fishing Planner: tide engine ready."
   );
-
+getTideCalibration,
+calibrateTideEvent,
+MARK_TIDE_CALIBRATIONS,
 })();
