@@ -75,7 +75,9 @@
     render();
 
   }
-
+if (view === "now") {
+  runForecastSmokeTest();
+}
 
   navButtons.forEach(button => {
 
