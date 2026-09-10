@@ -434,7 +434,25 @@ const scoredPrime =
           nextPrime.window
       })
     : null;
+const Safety =
+  window.SeaPlannerSafety;
 
+const safetyResult =
+  nextPrime && Safety
+    ? Safety.assessPrimeWindow({
+        mark,
+        forecast,
+        primeWindow:
+          nextPrime.window
+      })
+    : null;
+
+const safeDeparture =
+  safetyResult && Safety
+    ? Safety.getLatestSafeDeparture(
+        safetyResult
+      )
+    : null;
     const nextHigh =
       tides.highs.find(
         event =>
@@ -521,6 +539,39 @@ ${
 Sea temperature:
 ${
   scoredPrime?.bestComponents?.seaTemperature ?? "-"
+}
+<br><br>
+
+Safety:
+${
+  safetyResult
+    ? `${safetyResult.icon} ${safetyResult.label}`
+    : "Not found"
+}<br>
+
+Safety risk:
+${
+  safetyResult?.risk ?? "-"
+} / 100<br>
+
+Worst safety hour:
+${
+  safetyResult?.worstHour
+    ? U.formatHour(
+        safetyResult.worstHour.time
+      )
+    : "Not found"
+}<br>
+
+Latest safe departure:
+${
+  safeDeparture?.time
+    ? U.formatHour(
+        safeDeparture.time
+      )
+    : safeDeparture?.shouldFish === false
+      ? "Do not fish"
+      : "Not found"
 }
         </p>
 
