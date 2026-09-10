@@ -224,21 +224,19 @@
   }
 
 
-  function tideName(value) {
+function tideName(value) {
 
-    if (value === "high") {
-      return "HIGH WATER";
-    }
-
-
-    if (value === "low") {
-      return "LOW WATER";
-    }
-
-
-    return "TIDE";
-
+  if (value === "high") {
+    return "EST. HIGH WATER";
   }
+
+  if (value === "low") {
+    return "EST. LOW WATER";
+  }
+
+  return "EST. TIDE";
+
+}
 
 
   function tideIcon(value) {
