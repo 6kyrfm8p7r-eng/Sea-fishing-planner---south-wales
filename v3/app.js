@@ -34,7 +34,8 @@
 
   const Hybrid =
     window.SeaPlannerHybrid;
-
+const BassActivity =
+  window.SeaPlannerBassActivity;
 
   if (!U) {
 
@@ -271,7 +272,38 @@ function tideName(value) {
     );
 
   }
+function activityForOpportunity(
+  opportunity
+) {
 
+  if (
+    !BassActivity ||
+    !opportunity
+  ) {
+
+    return null;
+
+  }
+
+
+  const markId =
+    opportunity.markId ||
+    opportunity.mark?.id ||
+    null;
+
+
+  if (!markId) {
+
+    return null;
+
+  }
+
+
+  return BassActivity.analyseMarkActivity(
+    markId
+  );
+
+}
 
   /* =======================================================
      NAVIGATION
@@ -510,7 +542,19 @@ function tideName(value) {
       opportunitySafetyRisk(
         opportunity
       );
+const activity =
+  activityForOpportunity(
+    opportunity
+  );
 
+
+const opportunityScore =
+  BassActivity
+    ? BassActivity.calculateOpportunityScore(
+        opportunity.score,
+        activity
+      )
+    : opportunity.score;
 
     const departure =
       opportunity
@@ -664,7 +708,85 @@ function tideName(value) {
           </div>
 
         </div>
+        <div
+          class="tide-grid"
+          style="margin-top:12px;"
+        >
 
+          <div class="tide-box">
+
+            <div class="metric-label">
+              BASS ACTIVITY
+            </div>
+
+            <div class="metric-value">
+              ${
+                activity
+                  ? `${formatScore(
+                      activity.score
+                    )} / 100`
+                  : "—"
+              }
+            </div>
+
+          </div>
+
+
+          <div class="tide-box">
+
+            <div class="metric-label">
+              ACTIVITY CONFIDENCE
+            </div>
+
+            <div class="metric-value">
+              ${
+                activity
+                  ? `${formatScore(
+                      activity.confidence
+                    )} / 100`
+                  : "—"
+              }
+            </div>
+
+          </div>
+
+
+          <div class="tide-box">
+
+            <div class="metric-label">
+              OPPORTUNITY SCORE
+            </div>
+
+            <div class="metric-value">
+              ${formatScore(
+                opportunityScore
+              )} / 100
+            </div>
+
+          </div>
+
+        </div>
+
+
+        ${
+          activity
+            ? `
+
+              <div
+                class="status-pill"
+                style="margin-top:12px;"
+              >
+
+                ◉ ${activity.label}
+
+                · ${activity.reportCount}
+                recent report${activity.reportCount === 1 ? "" : "s"}
+
+              </div>
+
+            `
+            : ""
+        }
 
         <div
           class="
