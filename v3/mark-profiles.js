@@ -552,64 +552,147 @@
      PROFILE LOOKUP
      ======================================================= */
 
-  function getProfile(markOrId) {
+function getProfile(markOrId) {
 
-    if (!markOrId) {
-      return DEFAULT_PROFILE;
-    }
-
-    let id = "";
-
-    if (typeof markOrId === "string") {
-
-      id = markOrId;
-
-    } else {
-
-      id =
-        markOrId.id ||
-        "";
-
-    }
+  if (!markOrId) {
+    return DEFAULT_PROFILE;
+  }
 
 
-    if (
-      id &&
-      PROFILES[id]
-    ) {
-
-      return PROFILES[id];
-
-    }
+  const Marks =
+    window.SeaPlannerMarks;
 
 
-    const Marks =
-      window.SeaPlannerMarks;
+  let mark = null;
+  let id = "";
 
 
-    if (
-      Marks &&
-      typeof markOrId === "string"
-    ) {
+  /*
+   If a full mark object was supplied,
+   use it directly.
+  */
 
-      const mark =
-        Marks.getByName(markOrId);
+  if (
+    typeof markOrId === "object"
+  ) {
+
+    mark =
+      markOrId;
+
+    id =
+      mark.id || "";
+
+  }
+
+
+  /*
+   If an ID or name was supplied,
+   resolve it back to the mark database.
+  */
+
+  if (
+    typeof markOrId === "string"
+  ) {
+
+    id =
+      markOrId;
+
+
+    if (Marks) {
+
+      mark =
+        (
+          typeof Marks.getById ===
+          "function"
+        )
+          ? Marks.getById(markOrId)
+          : null;
+
 
       if (
-        mark &&
-        PROFILES[mark.id]
+        !mark &&
+        typeof Marks.getByName ===
+        "function"
       ) {
 
-        return PROFILES[mark.id];
+        mark =
+          Marks.getByName(
+            markOrId
+          );
 
       }
 
     }
 
+  }
 
-    return DEFAULT_PROFILE;
+
+  /*
+   A researched custom Fishing DNA profile
+   always takes priority.
+  */
+
+  if (
+    id &&
+    PROFILES[id]
+  ) {
+
+    return PROFILES[id];
 
   }
+
+
+  /*
+   If the string resolved to a mark whose
+   ID has a custom profile, use that.
+  */
+
+  if (
+    mark?.id &&
+    PROFILES[mark.id]
+  ) {
+
+    return PROFILES[mark.id];
+
+  }
+
+
+  /*
+   IMPORTANT FALLBACK:
+
+   Unresearched marks should inherit their
+   high/low tide preference from marks.js,
+   rather than blindly defaulting to LOW.
+
+   All the other baseline Fishing DNA values
+   still come from DEFAULT_PROFILE.
+  */
+
+  if (
+    mark?.type === "high" ||
+    mark?.type === "low"
+  ) {
+
+    return {
+
+      ...DEFAULT_PROFILE,
+
+      tideReference:
+        mark.type
+
+    };
+
+  }
+
+
+  /*
+   Final defensive fallback when the mark
+   cannot be resolved at all.
+  */
+
+  return DEFAULT_PROFILE;
+
+}
 
 
   function hasCustomProfile(markOrId) {
