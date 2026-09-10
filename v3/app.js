@@ -1,5 +1,20 @@
 /* =========================================================
-   SEA FISHING PLANNER — APP CONTROLLER
+   BASS FINDER WALES — APP CONTROLLER
+
+   V3 HYBRID INTELLIGENCE TEST
+
+   NOW:
+   - scans all fishing marks
+   - uses clustered forecasts for initial screening
+   - re-fetches finalists at exact coordinates
+   - runs exact fishing + safety analysis
+   - returns Best Overall / Best Low / Best High
+
+   7 DAYS:
+   - placeholder until NOW engine is proven
+
+   MARKS:
+   - Fishing DNA information
    ========================================================= */
 
 (function () {
@@ -7,40 +22,70 @@
   "use strict";
 
 
-  /* -------------------------------------------------------
+  /* =======================================================
      DEPENDENCIES
-     ------------------------------------------------------- */
+     ======================================================= */
 
   const U =
     window.SeaPlannerUtils;
 
+  const Hybrid =
+    window.SeaPlannerHybrid;
+
+
   if (!U) {
 
     console.error(
-      "Sea Fishing Planner: utilities failed to load."
+      "Bass Finder Wales: utilities failed to load."
     );
 
     return;
+
   }
 
 
-  /* -------------------------------------------------------
+  if (!Hybrid) {
+
+    console.error(
+      "Bass Finder Wales: hybrid engine failed to load."
+    );
+
+    return;
+
+  }
+
+
+  /* =======================================================
      APP STATE
-     ------------------------------------------------------- */
+     ======================================================= */
 
   const state = {
 
-    currentView: "now",
+    currentView:
+      "now",
 
-    loading: false,
+    loading:
+      false,
 
-    lastUpdated: null
+    hybridResult:
+      null,
+
+    hybridError:
+      null,
+
+    hybridPromise:
+      null,
+
+    lastUpdated:
+      null
 
   };
 
 
   const app =
-    document.getElementById("app");
+    document.getElementById(
+      "app"
+    );
 
 
   const navButtons =
@@ -51,60 +96,728 @@
     );
 
 
-  /* -------------------------------------------------------
-     NAVIGATION
-     ------------------------------------------------------- */
+  /* =======================================================
+     BASIC HELPERS
+     ======================================================= */
 
-  function setView(view) {
+  function formatTime(value) {
 
-    state.currentView = view;
+    if (!value) {
+      return "—";
+    }
 
-    navButtons.forEach(button => {
 
-      const active =
-        button.dataset.view === view;
+    try {
 
-      button.classList.toggle(
-        "active",
-        active
+      return U.formatHour(
+        value
       );
 
-    });
+    }
+    catch (error) {
 
-
-    render();
-
-
-    if (view === "now") {
-
-      runForecastSmokeTest();
+      return "—";
 
     }
 
   }
 
 
-  navButtons.forEach(button => {
+  function formatWindow(window) {
 
-    button.addEventListener(
-      "click",
-      () => {
+    if (
+      !window?.start ||
+      !window?.end
+    ) {
+      return "—";
+    }
 
-        setView(
-          button.dataset.view
+
+    try {
+
+      return U.formatPrimeWindow(
+        window.start,
+        window.end
+      );
+
+    }
+    catch (error) {
+
+      return "—";
+
+    }
+
+  }
+
+
+  function formatScore(value) {
+
+    const number =
+      Number(value);
+
+
+    return Number.isFinite(number)
+      ? Math.round(number)
+      : "—";
+
+  }
+
+
+  function safetyClass(level) {
+
+    switch (
+      String(level || "")
+        .toLowerCase()
+    ) {
+
+      case "dangerous":
+        return "status-danger";
+
+      case "high-risk":
+        return "status-risk";
+
+      case "caution":
+        return "status-caution";
+
+      default:
+        return "status-safe";
+
+    }
+
+  }
+
+
+  function tideName(value) {
+
+    return value === "high"
+      ? "HIGH WATER"
+      : value === "low"
+        ? "LOW WATER"
+        : "TIDE";
+
+  }
+
+
+  /* =======================================================
+     NAVIGATION
+     ======================================================= */
+
+  function setView(view) {
+
+    state.currentView =
+      view;
+
+
+    navButtons.forEach(
+      button => {
+
+        const active =
+          button.dataset.view ===
+          view;
+
+
+        button.classList.toggle(
+          "active",
+          active
         );
 
       }
     );
 
-  });
+
+    render();
 
 
-  /* -------------------------------------------------------
+    /*
+     If NOW has never been analysed,
+     start the hybrid engine.
+
+     If results already exist, do NOT
+     repeat all API requests simply
+     because the user changed tabs.
+    */
+
+    if (
+      view === "now" &&
+      !state.hybridResult &&
+      !state.hybridPromise
+    ) {
+
+      runHybridAnalysis();
+
+    }
+
+  }
+
+
+  navButtons.forEach(
+    button => {
+
+      button.addEventListener(
+        "click",
+        () => {
+
+          setView(
+            button.dataset.view
+          );
+
+        }
+      );
+
+    }
+  );
+
+
+  /* =======================================================
+     LOADING VIEW
+     ======================================================= */
+
+  function renderHybridLoading() {
+
+    return `
+      <section class="card">
+
+        <div class="eyebrow">
+          LIVE INTELLIGENCE
+        </div>
+
+        <h2 class="card-title">
+          Searching the Welsh coast…
+        </h2>
+
+        <p class="card-subtitle">
+          Screening all fishing marks,
+          then checking the strongest
+          contenders at their exact coordinates.
+        </p>
+
+      </section>
+
+
+      <section class="card">
+
+        <div class="eyebrow">
+          TWO-STAGE ANALYSIS
+        </div>
+
+        <div class="component-grid">
+
+          <div class="component">
+
+            <div class="icon">
+              1
+            </div>
+
+            <small>
+              FIRST PASS
+            </small>
+
+            <strong>
+              Coastal scan
+            </strong>
+
+          </div>
+
+
+          <div class="component">
+
+            <div class="icon">
+              2
+            </div>
+
+            <small>
+              FINALISTS
+            </small>
+
+            <strong>
+              Exact coordinates
+            </strong>
+
+          </div>
+
+
+          <div class="component">
+
+            <div class="icon">
+              ≈
+            </div>
+
+            <small>
+              MARINE
+            </small>
+
+            <strong>
+              Swell checked
+            </strong>
+
+          </div>
+
+
+          <div class="component">
+
+            <div class="icon">
+              ⚠
+            </div>
+
+            <small>
+              SAFETY
+            </small>
+
+            <strong>
+              Independent
+            </strong>
+
+          </div>
+
+        </div>
+
+      </section>
+    `;
+
+  }
+
+
+  /* =======================================================
+     OPPORTUNITY CARD
+     ======================================================= */
+
+  function renderOpportunity(
+    opportunity,
+    label
+  ) {
+
+    if (!opportunity) {
+
+      return `
+        <section class="card">
+
+          <div class="eyebrow">
+            ${label}
+          </div>
+
+          <h2 class="card-title">
+            No suitable opportunity
+          </h2>
+
+          <p class="card-subtitle">
+            No safe qualifying session was
+            found in this category during
+            the next 24 hours.
+          </p>
+
+        </section>
+      `;
+
+    }
+
+
+    const confidence =
+      formatScore(
+        opportunity
+          .confidence
+          ?.score
+      );
+
+
+    const safetyRisk =
+      formatScore(
+        opportunity
+          .safetyRisk
+      );
+
+
+    const departure =
+      opportunity
+        .latestDeparture
+        ?.time;
+
+
+    return `
+      <section class="card dashboard-card">
+
+        <div class="mark-heading">
+
+          <div>
+
+            <div class="eyebrow">
+              ${label}
+            </div>
+
+            <h2 class="mark-name">
+              ${opportunity.markName || "Unknown mark"}
+            </h2>
+
+            <div class="mark-region">
+              ${String(
+                opportunity.region || ""
+              ).toUpperCase()}
+            </div>
+
+          </div>
+
+
+          <div class="version-pill">
+            ${formatScore(
+              opportunity.score
+            )}
+          </div>
+
+        </div>
+
+
+        <div class="metrics-grid">
+
+          <div class="metric-box">
+
+            <div class="metric-icon">
+              ${opportunity.tideReference === "high" ? "↗" : "↘"}
+            </div>
+
+            <div class="metric-label">
+              ${tideName(
+                opportunity.tideReference
+              )}
+            </div>
+
+            <div class="metric-value">
+              ${formatTime(
+                opportunity.tideTime
+              )}
+            </div>
+
+          </div>
+
+
+          <div class="metric-box">
+
+            <div class="metric-icon">
+              ◷
+            </div>
+
+            <div class="metric-label">
+              BEST SAFE HOUR
+            </div>
+
+            <div class="metric-value">
+              ${formatTime(
+                opportunity
+                  .bestHour
+                  ?.time
+              )}
+            </div>
+
+          </div>
+
+
+          <div class="metric-box">
+
+            <div class="metric-icon">
+              ↩
+            </div>
+
+            <div class="metric-label">
+              LEAVE BY
+            </div>
+
+            <div class="metric-value">
+              ${formatTime(
+                departure
+              )}
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="tide-grid">
+
+          <div class="tide-box">
+
+            <div class="metric-label">
+              PRIME WINDOW
+            </div>
+
+            <div class="metric-value">
+              ${formatWindow(
+                opportunity
+                  .primeWindow
+              )}
+            </div>
+
+          </div>
+
+
+          <div class="tide-box">
+
+            <div class="metric-label">
+              FISHING SCORE
+            </div>
+
+            <div class="metric-value">
+              ${formatScore(
+                opportunity.score
+              )} / 100
+            </div>
+
+          </div>
+
+
+          <div class="tide-box">
+
+            <div class="metric-label">
+              CONFIDENCE
+            </div>
+
+            <div class="metric-value">
+              ${confidence} / 100
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div
+          class="
+            status-pill
+            ${safetyClass(
+              opportunity.safetyLevel
+            )}
+          "
+          style="margin-top:16px;"
+        >
+
+          ${opportunity.safetyIcon || "✓"}
+
+          ${opportunity.safetyLabel || "Safety checked"}
+
+          · ${safetyRisk}/100 risk
+
+        </div>
+
+
+        ${
+          opportunity.forcedEarlyDeparture
+
+            ? `
+              <div
+                class="status-pill status-caution"
+                style="margin-top:10px;"
+              >
+                ⚠ Conditions deteriorate —
+                leave earlier than the full
+                Fishing DNA window.
+              </div>
+            `
+
+            : ""
+        }
+
+      </section>
+    `;
+
+  }
+
+
+  /* =======================================================
+     DIAGNOSTICS CARD
+     ======================================================= */
+
+  function renderDiagnostics(
+    result
+  ) {
+
+    const diagnostics =
+      result?.diagnostics || {};
+
+
+    const clusterFailures =
+      Array.isArray(
+        diagnostics.clusterFailures
+      )
+        ? diagnostics.clusterFailures.length
+        : 0;
+
+
+    const exactFailures =
+      Array.isArray(
+        diagnostics.exactFailures
+      )
+        ? diagnostics.exactFailures.length
+        : 0;
+
+
+    return `
+      <section class="card">
+
+        <div class="eyebrow">
+          ENGINE DIAGNOSTICS
+        </div>
+
+        <h2 class="card-title">
+          Hybrid scan completed
+        </h2>
+
+
+        <div class="component-grid">
+
+          <div class="component">
+
+            <small>
+              MARKS
+            </small>
+
+            <strong>
+              ${diagnostics.requestedMarks ?? "—"}
+            </strong>
+
+          </div>
+
+
+          <div class="component">
+
+            <small>
+              CLUSTERS
+            </small>
+
+            <strong>
+              ${diagnostics.clusterCount ?? "—"}
+            </strong>
+
+          </div>
+
+
+          <div class="component">
+
+            <small>
+              SCREENED
+            </small>
+
+            <strong>
+              ${diagnostics.screenedMarks ?? "—"}
+            </strong>
+
+          </div>
+
+
+          <div class="component">
+
+            <small>
+              EXACT CHECKS
+            </small>
+
+            <strong>
+              ${diagnostics.exactChecks ?? "—"}
+            </strong>
+
+          </div>
+
+
+          <div class="component">
+
+            <small>
+              CLUSTER FAILURES
+            </small>
+
+            <strong>
+              ${clusterFailures}
+            </strong>
+
+          </div>
+
+
+          <div class="component">
+
+            <small>
+              EXACT FAILURES
+            </small>
+
+            <strong>
+              ${exactFailures}
+            </strong>
+
+          </div>
+
+        </div>
+
+
+        <p class="card-subtitle">
+          Final recommendations above are based
+          on exact-coordinate forecasts for the
+          shortlisted marks, not the shared
+          first-pass forecast.
+        </p>
+
+      </section>
+    `;
+
+  }
+
+
+  /* =======================================================
      NOW VIEW
-     ------------------------------------------------------- */
+     ======================================================= */
 
   function renderNow() {
+
+    if (state.loading) {
+
+      return renderHybridLoading();
+
+    }
+
+
+    if (state.hybridError) {
+
+      return `
+        <section class="card">
+
+          <div class="eyebrow">
+            LIVE INTELLIGENCE
+          </div>
+
+          <h2 class="card-title">
+            Hybrid analysis failed
+          </h2>
+
+          <p class="card-subtitle">
+            ${state.hybridError}
+          </p>
+
+        </section>
+      `;
+
+    }
+
+
+    if (!state.hybridResult) {
+
+      return `
+        <section class="card">
+
+          <div class="eyebrow">
+            NEXT 24 HOURS
+          </div>
+
+          <h2 class="card-title">
+            Best opportunity
+          </h2>
+
+          <p class="card-subtitle">
+            Preparing the Wales-wide
+            fishing intelligence engine…
+          </p>
+
+        </section>
+      `;
+
+    }
+
+
+    const result =
+      state.hybridResult;
+
 
     return `
       <section class="card">
@@ -114,24 +827,47 @@
         </div>
 
         <h2 class="card-title">
-          Best opportunity
+          Where should I fish?
         </h2>
 
         <p class="card-subtitle">
-          Analysing live weather,
-          marine conditions,
-          Fishing DNA and safety.
+          Every recommendation shown below
+          survived the exact-coordinate
+          fishing and safety recheck.
         </p>
 
       </section>
+
+
+      ${renderOpportunity(
+        result.overall,
+        "BEST OVERALL"
+      )}
+
+
+      ${renderOpportunity(
+        result.low,
+        "BEST LOW WATER"
+      )}
+
+
+      ${renderOpportunity(
+        result.high,
+        "BEST HIGH WATER"
+      )}
+
+
+      ${renderDiagnostics(
+        result
+      )}
     `;
 
   }
 
 
-  /* -------------------------------------------------------
+  /* =======================================================
      7-DAY PLANNER
-     ------------------------------------------------------- */
+     ======================================================= */
 
   function renderPlanner() {
 
@@ -150,20 +886,26 @@
       const date =
         new Date(today);
 
+
       date.setDate(
-        today.getDate() + offset
+        today.getDate() +
+        offset
       );
 
 
       const confidence =
-        U.getForecastConfidence(date);
+        U.getForecastConfidence(
+          date
+        );
 
 
       days.push(`
         <section class="card">
 
           <div class="eyebrow">
-            ${U.formatDayHeading(date)}
+            ${U.formatDayHeading(
+              date
+            )}
           </div>
 
           <h2 class="card-title">
@@ -184,7 +926,7 @@
               </div>
 
               <strong>
-                Awaiting forecast
+                Coming next
               </strong>
 
             </div>
@@ -197,7 +939,7 @@
               </div>
 
               <strong>
-                Awaiting forecast
+                Coming next
               </strong>
 
             </div>
@@ -222,11 +964,10 @@
         </h2>
 
         <p class="card-subtitle">
-          Every suitable mark and tide
-          will be analysed behind the scenes.
-          The strongest low-water and
-          high-water opportunities will
-          appear here.
+          Once the NOW hybrid engine is
+          validated, this same intelligence
+          will rank each day's best low-water
+          and high-water opportunities.
         </p>
 
       </section>
@@ -237,9 +978,9 @@
   }
 
 
-  /* -------------------------------------------------------
+  /* =======================================================
      MARKS VIEW
-     ------------------------------------------------------- */
+     ======================================================= */
 
   function renderMarks() {
 
@@ -286,9 +1027,9 @@
   }
 
 
-  /* -------------------------------------------------------
+  /* =======================================================
      MAIN RENDER
-     ------------------------------------------------------- */
+     ======================================================= */
 
   function render() {
 
@@ -306,6 +1047,7 @@
         renderPlanner();
 
       return;
+
     }
 
 
@@ -318,6 +1060,7 @@
         renderMarks();
 
       return;
+
     }
 
 
@@ -327,750 +1070,120 @@
   }
 
 
-  /* -------------------------------------------------------
-     LIVE FORECAST TEST
-     ------------------------------------------------------- */
+  /* =======================================================
+     RUN HYBRID ANALYSIS
+     ======================================================= */
 
-  async function runForecastSmokeTest() {
+  async function runHybridAnalysis() {
 
-    const Marks =
-      window.SeaPlannerMarks;
+    /*
+     Prevent duplicate scans if the user
+     taps NOW repeatedly while loading.
+    */
 
-    const Forecast =
-      window.SeaPlannerForecast;
+    if (state.hybridPromise) {
 
-    const Tides =
-      window.SeaPlannerTides;
+      return state.hybridPromise;
 
-    const Scoring =
-      window.SeaPlannerScoring;
+    }
 
-    const Safety =
-      window.SeaPlannerSafety;
+
+    state.loading =
+      true;
+
+    state.hybridError =
+      null;
 
 
     if (
-      !Marks ||
-      !Forecast ||
-      !Tides
+      state.currentView ===
+      "now"
     ) {
 
-      return;
+      render();
 
     }
 
 
-    const mark =
-      Marks.getById(
-        "aberthaw"
-      );
+    const job =
+      Hybrid
+        .analyseNext24Hours();
 
 
-    if (!mark) {
-      return;
-    }
-
-
-    /*
-     Loading state.
-     This appears while the live APIs are being fetched.
-    */
-
-    app.innerHTML = `
-      <section class="card">
-
-        <div class="eyebrow">
-          LIVE CONDITIONS
-        </div>
-
-        <h2 class="card-title">
-          Aberthaw
-        </h2>
-
-        <p class="card-subtitle">
-          Fetching live weather,
-          marine and tide data…
-        </p>
-
-      </section>
-    `;
+    state.hybridPromise =
+      job;
 
 
     try {
 
-      const forecast =
-        await Forecast.fetchForecast(
-          mark
-        );
+      const result =
+        await job;
 
 
-      /*
-       If the user changed tab while the API request
-       was running, do not overwrite that new view.
-      */
-
-      if (
-        state.currentView !==
-        "now"
-      ) {
-
-        return;
-
-      }
-
-
-      const tides =
-        Tides.fromForecast(
-          forecast
-        );
-
-
-      const nextPrime =
-        Tides.findNextPrimeWindow(
-          tides.events,
-          mark
-        );
-
-
-      const scoredPrime =
-        nextPrime &&
-        Scoring
-
-          ? Scoring.scorePrimeWindow({
-
-              mark,
-
-              forecast,
-
-              primeWindow:
-                nextPrime.window
-
-            })
-
-          : null;
-
-
-      const safetyResult =
-        nextPrime &&
-        Safety
-
-          ? Safety.assessPrimeWindow({
-
-              mark,
-
-              forecast,
-
-              primeWindow:
-                nextPrime.window
-
-            })
-
-          : null;
-
-
-      const safeDeparture =
-        safetyResult &&
-        Safety
-
-          ? Safety.getLatestSafeDeparture(
-              safetyResult
-            )
-
-          : null;
-
-
-      const now =
-        new Date();
-
-
-      const nextHigh =
-        tides.highs.find(
-          event =>
-            new Date(
-              event.time
-            ) >= now
-        );
-
-
-      const nextLow =
-        tides.lows.find(
-          event =>
-            new Date(
-              event.time
-            ) >= now
-        );
-
-
-      /*
-       Dashboard.
-       All values below are already calculated,
-       so there are no undefined-variable issues.
-      */
-
-      app.innerHTML = `
-        <section class="card dashboard-card">
-
-          <div class="mark-heading">
-
-            <div>
-
-              <div class="eyebrow">
-                LIVE CONDITIONS
-              </div>
-
-              <h2 class="mark-name">
-                ${mark.name}
-              </h2>
-
-              <div class="mark-region">
-                ${String(
-                  mark.region || ""
-                ).toUpperCase()}
-              </div>
-
-            </div>
-
-
-            <div class="version-pill">
-              LIVE
-            </div>
-
-          </div>
-
-
-          <div class="metrics-grid">
-
-            <div class="metric-box">
-
-              <div class="metric-icon">
-                ↗
-              </div>
-
-              <div class="metric-label">
-                NEXT HIGH
-              </div>
-
-              <div class="metric-value">
-                ${
-                  nextHigh
-                    ? U.formatHour(
-                        nextHigh.time
-                      )
-                    : "—"
-                }
-              </div>
-
-            </div>
-
-
-            <div class="metric-box">
-
-              <div class="metric-icon">
-                ↘
-              </div>
-
-              <div class="metric-label">
-                NEXT LOW
-              </div>
-
-              <div class="metric-value">
-                ${
-                  nextLow
-                    ? U.formatHour(
-                        nextLow.time
-                      )
-                    : "—"
-                }
-              </div>
-
-            </div>
-
-
-            <div class="metric-box">
-
-              <div class="metric-icon">
-                ◷
-              </div>
-
-              <div class="metric-label">
-                BEST HOUR
-              </div>
-
-              <div class="metric-value">
-                ${
-                  scoredPrime?.bestHour
-
-                    ? U.formatHour(
-                        scoredPrime
-                          .bestHour
-                          .time
-                      )
-
-                    : "—"
-                }
-              </div>
-
-            </div>
-
-          </div>
-
-
-          <div class="tide-grid">
-
-            <div class="tide-box">
-
-              <div class="metric-label">
-                PRIME WINDOW
-              </div>
-
-              <div class="metric-value">
-
-                ${
-                  nextPrime
-
-                    ? U.formatPrimeWindow(
-                        nextPrime
-                          .window
-                          .start,
-
-                        nextPrime
-                          .window
-                          .end
-                      )
-
-                    : "—"
-                }
-
-              </div>
-
-            </div>
-
-
-            <div class="tide-box tide-high">
-
-              <div class="metric-icon">
-                ≈
-              </div>
-
-              <div class="metric-label">
-                WEATHER HOURS
-              </div>
-
-              <div class="metric-value">
-                ${forecast.hourly.length}
-              </div>
-
-            </div>
-
-
-            <div class="tide-box tide-low">
-
-              <div class="metric-icon">
-                ≋
-              </div>
-
-              <div class="metric-label">
-                TIDE EVENTS
-              </div>
-
-              <div class="metric-value">
-                ${tides.events.length}
-              </div>
-
-            </div>
-
-          </div>
-
-        </section>
-
-
-        <section class="score-panel">
-
-          <div class="score-half">
-
-            <div class="score-label">
-              FISHING SCORE
-            </div>
-
-            <div class="score-number good">
-              ${
-                scoredPrime?.score ??
-                "—"
-              } / 100
-            </div>
-
-            <div class="progress-track">
-
-              <div
-                class="progress-fill"
-                style="
-                  width:
-                  ${
-                    scoredPrime?.score ??
-                    0
-                  }%
-                "
-              ></div>
-
-            </div>
-
-          </div>
-
-
-          <div class="score-half">
-
-            <div class="score-label">
-              SAFETY
-            </div>
-
-            <div class="score-number risk">
-              ${
-                safetyResult?.risk ??
-                "—"
-              } / 100
-            </div>
-
-            <div class="progress-track">
-
-              <div
-                class="progress-fill risk"
-                style="
-                  width:
-                  ${
-                    safetyResult?.risk ??
-                    0
-                  }%
-                "
-              ></div>
-
-            </div>
-
-
-            <div
-              class="
-                status-pill
-                ${
-                  safetyResult?.level ===
-                  "dangerous"
-
-                    ? "status-danger"
-
-                    : safetyResult?.level ===
-                      "high-risk"
-
-                      ? "status-risk"
-
-                      : safetyResult?.level ===
-                        "caution"
-
-                        ? "status-caution"
-
-                        : "status-safe"
-                }
-              "
-              style="margin-top:12px;"
-            >
-
-              ${safetyResult?.icon ?? ""}
-
-              ${
-                safetyResult?.label ??
-                "Not found"
-              }
-
-            </div>
-
-          </div>
-
-        </section>
-
-
-        <section class="card">
-
-          <div class="eyebrow">
-            CONDITIONS
-          </div>
-
-
-          <div class="component-grid">
-
-            <div class="component">
-
-              <div class="icon">
-                ↕
-              </div>
-
-              <small>
-                TIDE
-              </small>
-
-              <strong>
-                ${
-                  scoredPrime
-                    ?.bestComponents
-                    ?.tide ??
-                  "—"
-                }
-              </strong>
-
-            </div>
-
-
-            <div class="component">
-
-              <div class="icon">
-                ≈
-              </div>
-
-              <small>
-                SWELL
-              </small>
-
-              <strong>
-                ${
-                  scoredPrime
-                    ?.bestComponents
-                    ?.swell ??
-                  "—"
-                }
-              </strong>
-
-            </div>
-
-
-            <div class="component">
-
-              <div class="icon">
-                ➤
-              </div>
-
-              <small>
-                WIND
-              </small>
-
-              <strong>
-                ${
-                  scoredPrime
-                    ?.bestComponents
-                    ?.wind ??
-                  "—"
-                }
-              </strong>
-
-            </div>
-
-
-            <div class="component">
-
-              <div class="icon">
-                ◌
-              </div>
-
-              <small>
-                CLARITY
-              </small>
-
-              <strong>
-                ${
-                  scoredPrime
-                    ?.bestComponents
-                    ?.clarity ??
-                  "—"
-                }
-              </strong>
-
-            </div>
-
-
-            <div class="component">
-
-              <div class="icon">
-                ☁
-              </div>
-
-              <small>
-                CLOUD
-              </small>
-
-              <strong>
-                ${
-                  scoredPrime
-                    ?.bestComponents
-                    ?.cloud ??
-                  "—"
-                }
-              </strong>
-
-            </div>
-
-
-            <div class="component">
-
-              <div class="icon">
-                ♨
-              </div>
-
-              <small>
-                SEA TEMP
-              </small>
-
-              <strong>
-                ${
-                  scoredPrime
-                    ?.bestComponents
-                    ?.seaTemperature ??
-                  "—"
-                }
-              </strong>
-
-            </div>
-
-          </div>
-
-
-          <div class="safety-footer">
-
-            <div class="safety-item">
-
-              <div class="big-icon">
-                ⚠
-              </div>
-
-              <div>
-
-                <div class="metric-label">
-                  WORST SAFETY HOUR
-                </div>
-
-                <div class="metric-value">
-
-                  ${
-                    safetyResult
-                      ?.worstHour
-
-                      ? U.formatHour(
-                          safetyResult
-                            .worstHour
-                            .time
-                        )
-
-                      : "—"
-                  }
-
-                </div>
-
-              </div>
-
-            </div>
-
-
-            <div class="safety-item departure">
-
-              <div class="big-icon">
-                ◷
-              </div>
-
-              <div>
-
-                <div class="metric-label">
-                  LATEST SAFE DEPARTURE
-                </div>
-
-                <div class="metric-value">
-
-                  ${
-                    safeDeparture?.time
-
-                      ? U.formatHour(
-                          safeDeparture.time
-                        )
-
-                      : safeDeparture
-                          ?.shouldFish ===
-                        false
-
-                        ? "Do not fish"
-
-                        : "—"
-                  }
-
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </section>
-      `;
-
+      state.hybridResult =
+        result;
 
       state.lastUpdated =
         new Date();
 
+    }
+    catch (error) {
 
-    } catch (error) {
+      console.error(
+        "Bass Finder Wales hybrid analysis failed:",
+        error
+      );
+
+
+      state.hybridError =
+        error?.message ||
+        String(error) ||
+        "Unknown hybrid analysis error.";
+
+    }
+    finally {
+
+      state.loading =
+        false;
+
+      state.hybridPromise =
+        null;
+
 
       /*
-       Again, don't overwrite another tab
-       if the user moved while fetching.
+       Don't overwrite another tab if the
+       user moved away while analysis ran.
       */
 
       if (
-        state.currentView !==
+        state.currentView ===
         "now"
       ) {
 
-        return;
+        render();
 
       }
 
-
-      app.innerHTML = `
-        <section class="card">
-
-          <div class="eyebrow">
-            LIVE CONDITIONS
-          </div>
-
-          <h2 class="card-title">
-            Unable to load live data
-          </h2>
-
-          <p class="card-subtitle">
-            ${
-              error?.message ||
-              "Unknown forecast error"
-            }
-          </p>
-
-        </section>
-      `;
-
     }
+
+
+    return state.hybridResult;
 
   }
 
 
-  /* -------------------------------------------------------
-     START APP
-     ------------------------------------------------------- */
+  /* =======================================================
+     STARTUP
+     ======================================================= */
 
   render();
 
-  runForecastSmokeTest();
+
+  runHybridAnalysis();
 
 
   console.log(
-    "Sea Fishing Planner V3 started."
+    "Bass Finder Wales V3: hybrid app controller started."
   );
-
-
-  console.log(
-    "Compass test:",
-    U.degreesToCompass(225)
-  );
-
 
 })();
