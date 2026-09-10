@@ -376,9 +376,126 @@
   /* -------------------------------------------------------
      START APP
      ------------------------------------------------------- */
+async function runForecastSmokeTest() {
 
+  const Marks = window.SeaPlannerMarks;
+  const Forecast = window.SeaPlannerForecast;
+  const Tides = window.SeaPlannerTides;
+
+  if (!Marks || !Forecast || !Tides) {
+    return;
+  }
+
+  const mark =
+    Marks.getById("aberthaw");
+
+  if (!mark) {
+    return;
+  }
+
+  app.innerHTML = `
+    <section class="card">
+      <div class="eyebrow">
+        LIVE DATA TEST
+      </div>
+
+      <h2 class="card-title">
+        Aberthaw
+      </h2>
+
+      <p class="card-subtitle">
+        Fetching live weather, marine and tide data…
+      </p>
+    </section>
+  `;
+
+  try {
+
+    const forecast =
+      await Forecast.fetchForecast(mark);
+
+    const tides =
+      Tides.fromForecast(forecast);
+
+    const nextPrime =
+      Tides.findNextPrimeWindow(
+        tides.events,
+        mark
+      );
+
+    const nextHigh =
+      tides.highs.find(
+        event =>
+          new Date(event.time) >= new Date()
+      );
+
+    const nextLow =
+      tides.lows.find(
+        event =>
+          new Date(event.time) >= new Date()
+      );
+
+    app.innerHTML = `
+      <section class="card">
+
+        <div class="eyebrow">
+          LIVE DATA TEST
+        </div>
+
+        <h2 class="card-title">
+          Aberthaw ✅
+        </h2>
+
+        <p class="card-subtitle">
+          Weather hours: ${forecast.hourly.length}<br>
+          15-minute sea-level points: ${forecast.seaLevel15Minutes.length}<br>
+          Tide events detected: ${tides.events.length}<br><br>
+
+          Next high:
+          ${nextHigh ? U.formatHour(nextHigh.time) : "Not found"}<br>
+
+          Next low:
+          ${nextLow ? U.formatHour(nextLow.time) : "Not found"}<br><br>
+
+          Prime window:
+          ${
+            nextPrime
+              ? U.formatPrimeWindow(
+                  nextPrime.window.start,
+                  nextPrime.window.end
+                )
+              : "Not found"
+          }
+        </p>
+
+      </section>
+    `;
+
+  } catch (error) {
+
+    app.innerHTML = `
+      <section class="card">
+
+        <div class="eyebrow">
+          LIVE DATA TEST
+        </div>
+
+        <h2 class="card-title">
+          Test failed
+        </h2>
+
+        <p class="card-subtitle">
+          ${error.message}
+        </p>
+
+      </section>
+    `;
+
+  }
+
+}
   render();
-
+runForecastSmokeTest();
 
   console.log(
     "Sea Fishing Planner V3 started."
