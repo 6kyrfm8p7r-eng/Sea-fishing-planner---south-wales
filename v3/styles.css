@@ -1253,3 +1253,74 @@ button {
       calc(100% - 18px);
   }
 }
+/* =========================================================
+   7-DAY MOBILE PLANNER IMPROVEMENTS
+   ========================================================= */
+
+.planner-grid {
+  grid-template-columns: 1fr !important;
+}
+
+
+.planner-option {
+  width: 100%;
+  min-width: 0;
+
+  padding: 18px;
+
+  border:
+    1px solid
+    rgba(69, 223, 233, 0.22);
+
+  border-radius: 20px;
+
+  background:
+    rgba(4, 28, 36, 0.72);
+
+  overflow: hidden;
+}
+
+
+details.planner-option > summary {
+  display: block;
+}
+
+
+details.planner-option > summary::-webkit-details-marker {
+  display: none;
+}
+
+
+details.planner-option[open] {
+  background:
+    rgba(5, 34, 43, 0.92);
+}
+
+
+details.planner-option[open] > summary {
+  padding-bottom: 2px;
+}
+
+
+details.planner-option .version-pill {
+  flex: 0 0 auto;
+}
+
+
+.content {
+  padding-bottom:
+    calc(
+      150px +
+      env(safe-area-inset-bottom)
+    );
+}
+
+
+@media (min-width: 700px) {
+
+  .planner-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr)) !important;
+  }
+
+}
