@@ -1,6 +1,8 @@
 /* =========================================================
    BASS FINDER WALES — HYBRID FORECAST LOADER
 
+   TWO-STAGE FORECAST ENGINE
+
    STAGE 1
    -------
    Scan all marks using tightly grouped coastal forecast
@@ -9,19 +11,30 @@
    STAGE 2
    -------
    Re-fetch shortlisted marks at their EXACT coordinates.
-   Only exact-coordinate results are allowed to become
-   final recommendations.
 
-   IMPORTANT
-   ---------
-   Coarse safety is NEVER used to permanently reject a mark.
-   Final safety decisions use exact-coordinate forecasts.
+   SAFETY
+   ------
+   Coarse safety is NEVER allowed to permanently reject
+   a mark.
+
+   Final safety decisions are always made using the
+   exact-coordinate forecast.
+
+   7-DAY PLANNER
+   -------------
+   The weekly planner reuses the same cluster forecasts
+   across all seven days, then fetches every unique
+   finalist at exact coordinates only once.
    ========================================================= */
 
 (function () {
 
   "use strict";
 
+
+  /* =======================================================
+     DEPENDENCIES
+     ======================================================= */
 
   const Marks =
     window.SeaPlannerMarks;
@@ -39,36 +52,68 @@
     window.SeaPlannerOpportunities;
 
 
+  if (
+    !Marks ||
+    !Forecast ||
+    !Tides ||
+    !Scoring ||
+    !Opportunities
+  ) {
+
+    console.error(
+      "Bass Finder Wales: hybrid dependencies failed to load."
+    );
+
+    return;
+
+  }
+
+
+  /* =======================================================
+     DEFAULT OPTIONS
+     ======================================================= */
+
   const DEFAULT_OPTIONS = {
 
     /*
-     Tight radius deliberately chosen because swell can
-     change meaningfully around the Welsh coastline.
+     Tight coastal clusters.
+
+     Exact finalists are still re-fetched at their
+     individual coordinates.
     */
     clusterRadiusKm: 7,
 
-    /*
-     Maximum number of cluster forecasts running together.
-     Each forecast itself performs weather + marine calls.
-    */
     clusterConcurrency: 3,
 
-    /*
-     Exact checks are deliberately conservative.
-    */
     exactConcurrency: 3,
 
-    /*
-     Shortlist sizes.
 
-     Duplicates are removed, so actual exact checks will
-     normally be fewer than the sum of these.
+    /*
+     Number of contenders preserved from the first pass.
+
+     The overall list plus dedicated LOW and HIGH lists
+     prevents one tide type from dominating the shortlist.
     */
+
     topOverall: 8,
+
     topLow: 4,
+
     topHigh: 4,
 
-    horizonHours: 24
+
+    /*
+     NOW horizon.
+    */
+
+    horizonHours: 24,
+
+
+    /*
+     Weekly planner length.
+    */
+
+    plannerDays: 7
 
   };
 
@@ -81,8 +126,11 @@
 
     const date =
       value instanceof Date
-        ? new Date(value)
+        ? new Date(
+            value.getTime()
+          )
         : new Date(value);
+
 
     return Number.isNaN(
       date.getTime()
@@ -98,6 +146,7 @@
     const date =
       dateValue(value);
 
+
     return date
       ? date.getTime()
       : null;
@@ -110,8 +159,18 @@
     fallback = null
   ) {
 
+    if (
+      value === null ||
+      value === undefined ||
+      value === ""
+    ) {
+      return fallback;
+    }
+
+
     const parsed =
       Number(value);
+
 
     return Number.isFinite(parsed)
       ? parsed
@@ -127,6 +186,81 @@
       Math.PI /
       180
     );
+
+  }
+
+
+  function startOfDay(value) {
+
+    const date =
+      dateValue(value);
+
+
+    if (!date) {
+      return null;
+    }
+
+
+    date.setHours(
+      0,
+      0,
+      0,
+      0
+    );
+
+
+    return date;
+
+  }
+
+
+  function startOfNextDay(value) {
+
+    const date =
+      startOfDay(value);
+
+
+    if (!date) {
+      return null;
+    }
+
+
+    date.setDate(
+      date.getDate() + 1
+    );
+
+
+    return date;
+
+  }
+
+
+  function hoursBetween(
+    start,
+    end
+  ) {
+
+    const startTime =
+      timeValue(start);
+
+    const endTime =
+      timeValue(end);
+
+
+    if (
+      startTime === null ||
+      endTime === null ||
+      endTime <= startTime
+    ) {
+      return 0;
+    }
+
+
+    return (
+      endTime -
+      startTime
+    ) /
+    3600000;
 
   }
 
@@ -159,7 +293,9 @@
       lat2 === null ||
       lon2 === null
     ) {
+
       return Infinity;
+
     }
 
 
@@ -223,14 +359,17 @@
       !Array.isArray(marks) ||
       !marks.length
     ) {
+
       return null;
+
     }
 
 
     const latitudes =
       marks
-        .map(mark =>
-          number(mark.lat)
+        .map(
+          mark =>
+            number(mark.lat)
         )
         .filter(
           Number.isFinite
@@ -239,8 +378,9 @@
 
     const longitudes =
       marks
-        .map(mark =>
-          number(mark.lon)
+        .map(
+          mark =>
+            number(mark.lon)
         )
         .filter(
           Number.isFinite
@@ -251,7 +391,9 @@
       !latitudes.length ||
       !longitudes.length
     ) {
+
       return null;
+
     }
 
 
@@ -280,11 +422,6 @@
 
   /* =======================================================
      BUILD TIGHT COASTAL CLUSTERS
-
-     Greedy clustering is intentional here.
-
-     It keeps the implementation predictable and prevents
-     us from making extremely broad forecast regions.
      ======================================================= */
 
   function buildClusters(
@@ -307,13 +444,9 @@
       const mark of source
     ) {
 
-      let chosen = null;
+      let chosen =
+        null;
 
-
-      /*
-       Find the closest existing cluster which is still
-       within our deliberately small radius.
-      */
 
       for (
         const cluster of clusters
@@ -459,7 +592,9 @@
           index >=
           source.length
         ) {
+
           return;
+
         }
 
 
@@ -475,9 +610,7 @@
         catch (error) {
 
           results[index] = {
-
             error
-
           };
 
         }
@@ -578,28 +711,26 @@
               cluster?.id,
 
             marks:
-              cluster?.marks
+              cluster
+                ?.marks
                 ?.map(
                   mark =>
                     mark.name
                 ) || [],
 
             reason:
-              result?.error
+              result
+                ?.error
                 ?.message ||
               "Cluster forecast failed"
 
           });
 
+
           return;
 
         }
 
-
-        /*
-         Every mark in this cluster temporarily uses
-         the same forecast for the screening stage.
-        */
 
         result
           .cluster
@@ -631,7 +762,7 @@
 
 
   /* =======================================================
-     CLIP A FISHING DNA WINDOW TO OUR SEARCH HORIZON
+     WINDOW HELPERS
      ======================================================= */
 
   function clipWindow(
@@ -640,34 +771,59 @@
     rangeEnd
   ) {
 
+    const windowStart =
+      timeValue(
+        window?.start
+      );
+
+    const windowEnd =
+      timeValue(
+        window?.end
+      );
+
+    const searchStart =
+      timeValue(
+        rangeStart
+      );
+
+    const searchEnd =
+      timeValue(
+        rangeEnd
+      );
+
+
+    if (
+      windowStart === null ||
+      windowEnd === null ||
+      searchStart === null ||
+      searchEnd === null
+    ) {
+
+      return null;
+
+    }
+
+
     const start =
       Math.max(
-        timeValue(
-          window?.start
-        ) ?? Infinity,
-        timeValue(
-          rangeStart
-        ) ?? Infinity
+        windowStart,
+        searchStart
       );
 
 
     const end =
       Math.min(
-        timeValue(
-          window?.end
-        ) ?? -Infinity,
-        timeValue(
-          rangeEnd
-        ) ?? -Infinity
+        windowEnd,
+        searchEnd
       );
 
 
     if (
-      !Number.isFinite(start) ||
-      !Number.isFinite(end) ||
       end < start
     ) {
+
       return null;
+
     }
 
 
@@ -685,49 +841,51 @@
 
 
   /* =======================================================
-     FIRST-PASS SCREENING
+     FIRST-PASS SCREENING FOR A TIME RANGE
 
-     CRITICAL DESIGN DECISION:
+     IMPORTANT:
+     No coarse safety rejection happens here.
 
-     We do NOT reject on coarse safety here.
-
-     A shared/clustered swell forecast is good enough for
-     finding candidates, but not good enough to permanently
-     say a specific rock mark is safe or unsafe.
-
-     Safety becomes authoritative only after exact re-fetch.
+     This stage only finds fishing-potential contenders.
      ======================================================= */
 
-  function screenMark({
+  function screenMarkRange({
     mark,
     forecast,
-    now,
-    horizonHours
+    rangeStart,
+    rangeEnd
   }) {
 
     if (
       !mark ||
       !forecast
     ) {
+
       return null;
+
     }
 
 
     const start =
-      dateValue(now);
-
-
-    if (!start) {
-      return null;
-    }
-
+      dateValue(
+        rangeStart
+      );
 
     const end =
-      new Date(
-        start.getTime() +
-        horizonHours *
-        3600000
+      dateValue(
+        rangeEnd
       );
+
+
+    if (
+      !start ||
+      !end ||
+      end <= start
+    ) {
+
+      return null;
+
+    }
 
 
     const tideData =
@@ -741,7 +899,9 @@
         tideData?.events
       )
     ) {
+
       return null;
+
     }
 
 
@@ -798,7 +958,9 @@
           )
         )
       ) {
+
         continue;
+
       }
 
 
@@ -816,10 +978,17 @@
           mark.region || "",
 
         tideReference:
-          candidate.event.type,
+          candidate
+            .event
+            .type,
 
         tideEvent:
           candidate.event,
+
+        tideTime:
+          candidate
+            .event
+            .time,
 
         primeWindow:
           clipped,
@@ -845,19 +1014,23 @@
 
 
     if (!candidates.length) {
+
       return null;
+
     }
 
 
     candidates.sort(
       (a, b) =>
-        b.score - a.score
+        b.score -
+        a.score
     );
 
 
     /*
-     One first-pass result per mark is enough.
-     Exact stage can inspect all relevant windows.
+     One coarse result per mark is enough.
+
+     The exact stage will analyse the mark properly.
     */
 
     return candidates[0];
@@ -866,14 +1039,61 @@
 
 
   /* =======================================================
-     SCREEN ALL MARKS
+     LEGACY / NOW SCREENING WRAPPER
      ======================================================= */
 
-  function screenAllMarks({
-    marks,
-    forecastByMark,
+  function screenMark({
+    mark,
+    forecast,
     now,
     horizonHours
+  }) {
+
+    const start =
+      dateValue(now);
+
+
+    if (!start) {
+
+      return null;
+
+    }
+
+
+    const end =
+      new Date(
+        start.getTime() +
+        horizonHours *
+        3600000
+      );
+
+
+    return screenMarkRange({
+
+      mark,
+
+      forecast,
+
+      rangeStart:
+        start,
+
+      rangeEnd:
+        end
+
+    });
+
+  }
+
+
+  /* =======================================================
+     SCREEN ALL MARKS FOR RANGE
+     ======================================================= */
+
+  function screenAllMarksRange({
+    marks,
+    forecastByMark,
+    rangeStart,
+    rangeEnd
   }) {
 
     const results = [];
@@ -897,15 +1117,15 @@
       try {
 
         const result =
-          screenMark({
+          screenMarkRange({
 
             mark,
 
             forecast,
 
-            now,
+            rangeStart,
 
-            horizonHours
+            rangeEnd
 
           });
 
@@ -933,8 +1153,56 @@
 
     return results.sort(
       (a, b) =>
-        b.score - a.score
+        b.score -
+        a.score
     );
+
+  }
+
+
+  /* =======================================================
+     LEGACY / NOW SCREEN ALL MARKS WRAPPER
+     ======================================================= */
+
+  function screenAllMarks({
+    marks,
+    forecastByMark,
+    now,
+    horizonHours
+  }) {
+
+    const start =
+      dateValue(now);
+
+
+    if (!start) {
+
+      return [];
+
+    }
+
+
+    const end =
+      new Date(
+        start.getTime() +
+        horizonHours *
+        3600000
+      );
+
+
+    return screenAllMarksRange({
+
+      marks,
+
+      forecastByMark,
+
+      rangeStart:
+        start,
+
+      rangeEnd:
+        end
+
+    });
 
   }
 
@@ -948,15 +1216,21 @@
     options
   ) {
 
+    const source =
+      Array.isArray(screened)
+        ? screened
+        : [];
+
+
     const overall =
-      screened.slice(
+      source.slice(
         0,
         options.topOverall
       );
 
 
     const lows =
-      screened
+      source
         .filter(
           item =>
             item
@@ -970,7 +1244,7 @@
 
 
     const highs =
-      screened
+      source
         .filter(
           item =>
             item
@@ -1017,18 +1291,26 @@
 
 
   /* =======================================================
-     FETCH EXACT FORECASTS FOR FINALISTS
+     FETCH EXACT FORECASTS
      ======================================================= */
 
   async function fetchExactForecasts({
     marks,
-    concurrency
+    concurrency =
+      DEFAULT_OPTIONS
+        .exactConcurrency
   }) {
+
+    const source =
+      Array.isArray(marks)
+        ? marks
+        : [];
+
 
     const results =
       await mapWithConcurrency(
 
-        marks,
+        source,
 
         concurrency,
 
@@ -1036,7 +1318,9 @@
 
           const forecast =
             await Forecast
-              .fetchForecast(mark);
+              .fetchForecast(
+                mark
+              );
 
 
           return {
@@ -1060,7 +1344,7 @@
       (result, index) => {
 
         const mark =
-          marks[index];
+          source[index];
 
 
         if (
@@ -1078,11 +1362,13 @@
               mark?.name,
 
             reason:
-              result?.error
+              result
+                ?.error
                 ?.message ||
               "Exact forecast failed"
 
           });
+
 
           return;
 
@@ -1110,7 +1396,74 @@
 
 
   /* =======================================================
-     COMPLETE HYBRID ANALYSIS
+     EXACT RANGE ANALYSIS
+     ======================================================= */
+
+  function analyseExactRange({
+    marks,
+    forecasts,
+    rangeStart,
+    rangeEnd
+  }) {
+
+    const start =
+      dateValue(
+        rangeStart
+      );
+
+    const end =
+      dateValue(
+        rangeEnd
+      );
+
+
+    if (
+      !start ||
+      !end ||
+      end <= start
+    ) {
+
+      return {
+
+        overall: null,
+        low: null,
+        high: null,
+        all: [],
+        lows: [],
+        highs: [],
+        failures: []
+
+      };
+
+    }
+
+
+    const hours =
+      hoursBetween(
+        start,
+        end
+      );
+
+
+    return Opportunities
+      .analyseForecastSet({
+
+        marks,
+
+        forecasts,
+
+        now:
+          start,
+
+        hours
+
+      });
+
+  }
+
+
+  /* =======================================================
+     COMPLETE NOW ANALYSIS
      ======================================================= */
 
   async function analyseNext24Hours(
@@ -1148,7 +1501,7 @@
         customOptions.marks
       )
         ? customOptions.marks
-        : Marks?.all || [];
+        : Marks.all || [];
 
 
     if (!marks.length) {
@@ -1160,9 +1513,10 @@
     }
 
 
-    /* -----------------------------------------------------
-       STAGE 1 — CLUSTERED COASTAL SCAN
-       ----------------------------------------------------- */
+    /*
+     STAGE 1
+     Clustered regional scan.
+    */
 
     const clusters =
       buildClusters(
@@ -1205,23 +1559,21 @@
 
       return {
 
-        overall:
-          null,
+        overall: null,
 
-        low:
-          null,
+        low: null,
 
-        high:
-          null,
+        high: null,
 
-        all:
-          [],
+        all: [],
 
-        screened:
-          [],
+        lows: [],
 
-        finalists:
-          [],
+        highs: [],
+
+        screened: [],
+
+        finalists: [],
 
         diagnostics: {
 
@@ -1231,12 +1583,14 @@
           clusterCount:
             clusters.length,
 
+          screenedMarks:
+            0,
+
           exactChecks:
             0,
 
           clusterFailures:
-            clusterData
-              .failures,
+            clusterData.failures,
 
           exactFailures:
             []
@@ -1255,9 +1609,10 @@
       );
 
 
-    /* -----------------------------------------------------
-       STAGE 2 — EXACT COORDINATE RECHECK
-       ----------------------------------------------------- */
+    /*
+     STAGE 2
+     Exact-coordinate forecasts.
+    */
 
     const exactData =
       await fetchExactForecasts({
@@ -1273,20 +1628,10 @@
 
 
     /*
-     This is where the existing opportunity engine becomes
-     authoritative.
+     Authoritative exact-coordinate analysis.
 
-     It reruns:
-       - exact tides
-       - Fishing DNA
-       - hour-by-hour fishing score
-       - exact swell / wave safety
-       - wind safety
-       - deterioration
-       - latest safe departure
-       - best SAFE fishing hour
-
-     High-risk / dangerous recommendations are rejected here.
+     Fishing score + exact safety + deterioration +
+     latest safe departure all happen here.
     */
 
     const finalResults =
@@ -1373,6 +1718,514 @@
 
 
   /* =======================================================
+     BUILD 7 CALENDAR DAY RANGES
+
+     TODAY:
+     Starts at the current time, so the planner will never
+     recommend an opportunity which has already passed.
+
+     FUTURE DAYS:
+     Midnight to midnight.
+     ======================================================= */
+
+  function buildPlannerRanges(
+    now,
+    dayCount
+  ) {
+
+    const current =
+      dateValue(now);
+
+
+    if (!current) {
+
+      return [];
+
+    }
+
+
+    const ranges = [];
+
+
+    for (
+      let index = 0;
+      index < dayCount;
+      index++
+    ) {
+
+      const calendarDay =
+        startOfDay(
+          current
+        );
+
+
+      calendarDay.setDate(
+        calendarDay.getDate() +
+        index
+      );
+
+
+      const nextDay =
+        startOfNextDay(
+          calendarDay
+        );
+
+
+      const rangeStart =
+        index === 0
+          ? new Date(
+              current.getTime()
+            )
+          : calendarDay;
+
+
+      const rangeEnd =
+        nextDay;
+
+
+      ranges.push({
+
+        index,
+
+        date:
+          calendarDay,
+
+        start:
+          rangeStart,
+
+        end:
+          rangeEnd
+
+      });
+
+    }
+
+
+    return ranges;
+
+  }
+
+
+  /* =======================================================
+     COMPLETE 7-DAY HYBRID ANALYSIS
+
+     IMPORTANT EFFICIENCY RULE:
+
+     1. Fetch each regional cluster ONCE.
+     2. Screen all seven days from those forecasts.
+     3. Build one union of unique finalists.
+     4. Fetch each finalist at exact coordinates ONCE.
+     5. Analyse each day using those exact forecasts.
+
+     This is substantially lighter than running seven
+     completely separate Wales-wide scans.
+     ======================================================= */
+
+  async function analyseNext7Days(
+    customOptions = {}
+  ) {
+
+    const options = {
+
+      ...DEFAULT_OPTIONS,
+
+      ...customOptions
+
+    };
+
+
+    const now =
+      customOptions.now
+        ? dateValue(
+            customOptions.now
+          )
+        : new Date();
+
+
+    if (!now) {
+
+      throw new Error(
+        "Invalid planner start time."
+      );
+
+    }
+
+
+    const marks =
+      Array.isArray(
+        customOptions.marks
+      )
+        ? customOptions.marks
+        : Marks.all || [];
+
+
+    if (!marks.length) {
+
+      throw new Error(
+        "No fishing marks available."
+      );
+
+    }
+
+
+    const dayCount =
+      Math.max(
+        1,
+        Math.min(
+          7,
+          Number(
+            options.plannerDays
+          ) || 7
+        )
+      );
+
+
+    const ranges =
+      buildPlannerRanges(
+        now,
+        dayCount
+      );
+
+
+    /*
+     -----------------------------------------------
+     STAGE 1
+     One regional forecast scan for the whole week.
+     -----------------------------------------------
+    */
+
+    const clusters =
+      buildClusters(
+        marks,
+        options.clusterRadiusKm
+      );
+
+
+    const clusterData =
+      await fetchClusterForecasts({
+
+        clusters,
+
+        concurrency:
+          options
+            .clusterConcurrency
+
+      });
+
+
+    /*
+     Screen each calendar day independently.
+    */
+
+    const screenedDays =
+      ranges.map(
+        range => {
+
+          const screened =
+            screenAllMarksRange({
+
+              marks,
+
+              forecastByMark:
+                clusterData
+                  .forecastByMark,
+
+              rangeStart:
+                range.start,
+
+              rangeEnd:
+                range.end
+
+            });
+
+
+          const finalists =
+            selectFinalists(
+              screened,
+              options
+            );
+
+
+          return {
+
+            ...range,
+
+            screened,
+
+            finalists
+
+          };
+
+        }
+      );
+
+
+    /*
+     Union every day's finalists.
+
+     A mark which qualifies on multiple days is only
+     downloaded once at exact coordinates.
+    */
+
+    const uniqueFinalists =
+      new Map();
+
+
+    screenedDays.forEach(
+      day => {
+
+        day
+          .finalists
+          .forEach(
+            mark => {
+
+              if (
+                mark?.id
+              ) {
+
+                uniqueFinalists.set(
+                  mark.id,
+                  mark
+                );
+
+              }
+
+            }
+          );
+
+      }
+    );
+
+
+    const finalistMarks = [
+      ...uniqueFinalists.values()
+    ];
+
+
+    /*
+     If nothing qualified at all, return empty day cards.
+    */
+
+    if (!finalistMarks.length) {
+
+      return {
+
+        days:
+          ranges.map(
+            range => ({
+
+              date:
+                range.date,
+
+              start:
+                range.start,
+
+              end:
+                range.end,
+
+              overall:
+                null,
+
+              low:
+                null,
+
+              high:
+                null,
+
+              all: [],
+
+              lows: [],
+
+              highs: []
+
+            })
+          ),
+
+        finalists: [],
+
+        diagnostics: {
+
+          requestedMarks:
+            marks.length,
+
+          clusterCount:
+            clusters.length,
+
+          plannerDays:
+            ranges.length,
+
+          exactChecks:
+            0,
+
+          clusterFailures:
+            clusterData.failures,
+
+          exactFailures:
+            []
+
+        }
+
+      };
+
+    }
+
+
+    /*
+     -----------------------------------------------
+     STAGE 2
+     Exact coordinates — one fetch per unique finalist.
+     -----------------------------------------------
+    */
+
+    const exactData =
+      await fetchExactForecasts({
+
+        marks:
+          finalistMarks,
+
+        concurrency:
+          options
+            .exactConcurrency
+
+      });
+
+
+    const exactFailures = [
+      ...exactData.failures
+    ];
+
+
+    /*
+     Analyse each calendar day independently using
+     the exact-coordinate finalist forecasts.
+    */
+
+    const days =
+      screenedDays.map(
+        day => {
+
+          const result =
+            analyseExactRange({
+
+              marks:
+                day.finalists,
+
+              forecasts:
+                exactData.forecasts,
+
+              rangeStart:
+                day.start,
+
+              rangeEnd:
+                day.end
+
+            });
+
+
+          if (
+            Array.isArray(
+              result?.failures
+            )
+          ) {
+
+            exactFailures.push(
+              ...result.failures
+            );
+
+          }
+
+
+          return {
+
+            date:
+              day.date,
+
+            start:
+              day.start,
+
+            end:
+              day.end,
+
+            overall:
+              result
+                ?.overall ||
+              null,
+
+            low:
+              result
+                ?.low ||
+              null,
+
+            high:
+              result
+                ?.high ||
+              null,
+
+            all:
+              result
+                ?.all ||
+              [],
+
+            lows:
+              result
+                ?.lows ||
+              [],
+
+            highs:
+              result
+                ?.highs ||
+              [],
+
+            screenedCount:
+              day
+                .screened
+                .length,
+
+            finalistCount:
+              day
+                .finalists
+                .length
+
+          };
+
+        }
+      );
+
+
+    return {
+
+      days,
+
+      finalists:
+        finalistMarks,
+
+      diagnostics: {
+
+        requestedMarks:
+          marks.length,
+
+        clusterCount:
+          clusters.length,
+
+        plannerDays:
+          days.length,
+
+        exactChecks:
+          finalistMarks.length,
+
+        clusterFailures:
+          clusterData.failures,
+
+        exactFailures
+
+      }
+
+    };
+
+  }
+
+
+  /* =======================================================
      PUBLIC API
      ======================================================= */
 
@@ -1389,19 +2242,25 @@
 
     screenMark,
 
+    screenMarkRange,
+
     screenAllMarks,
+
+    screenAllMarksRange,
 
     selectFinalists,
 
     fetchExactForecasts,
 
-    analyseNext24Hours
+    analyseNext24Hours,
+
+    analyseNext7Days
 
   };
 
 
   console.log(
-    "Bass Finder Wales: hybrid forecast loader ready."
+    "Bass Finder Wales: hybrid NOW + 7-day engine ready."
   );
 
 })();
