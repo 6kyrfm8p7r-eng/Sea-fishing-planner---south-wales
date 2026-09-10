@@ -422,6 +422,18 @@ async function runForecastSmokeTest() {
         tides.events,
         mark
       );
+     const Scoring =
+  window.SeaPlannerScoring;
+
+const scoredPrime =
+  nextPrime && Scoring
+    ? Scoring.scorePrimeWindow({
+        mark,
+        forecast,
+        primeWindow:
+          nextPrime.window
+      })
+    : null;
 
     const nextHigh =
       tides.highs.find(
@@ -457,15 +469,59 @@ async function runForecastSmokeTest() {
           Next low:
           ${nextLow ? U.formatHour(nextLow.time) : "Not found"}<br><br>
 
-          Prime window:
-          ${
-            nextPrime
-              ? U.formatPrimeWindow(
-                  nextPrime.window.start,
-                  nextPrime.window.end
-                )
-              : "Not found"
-          }
+         Prime window:
+${
+  nextPrime
+    ? U.formatPrimeWindow(
+        nextPrime.window.start,
+        nextPrime.window.end
+      )
+    : "Not found"
+}<br><br>
+
+Fishing score:
+${
+  scoredPrime?.score ?? "Not found"
+} / 100<br>
+
+Best hour:
+${
+  scoredPrime?.bestHour
+    ? U.formatHour(
+        scoredPrime.bestHour.time
+      )
+    : "Not found"
+}<br><br>
+
+Tide:
+${
+  scoredPrime?.bestComponents?.tide ?? "-"
+}<br>
+
+Swell:
+${
+  scoredPrime?.bestComponents?.swell ?? "-"
+}<br>
+
+Wind:
+${
+  scoredPrime?.bestComponents?.wind ?? "-"
+}<br>
+
+Clarity:
+${
+  scoredPrime?.bestComponents?.clarity ?? "-"
+}<br>
+
+Cloud:
+${
+  scoredPrime?.bestComponents?.cloud ?? "-"
+}<br>
+
+Sea temperature:
+${
+  scoredPrime?.bestComponents?.seaTemperature ?? "-"
+}
         </p>
 
       </section>
