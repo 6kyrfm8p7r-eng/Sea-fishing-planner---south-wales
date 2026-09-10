@@ -47,8 +47,25 @@
 
   async function fetchJson(url) {
 
+  const controller =
+    new AbortController();
+
+  const timeout =
+    setTimeout(
+      () => controller.abort(),
+      15000
+    );
+
+  try {
+
     const response =
-      await fetch(url);
+      await fetch(
+        url,
+        {
+          signal:
+            controller.signal
+        }
+      );
 
     if (!response.ok) {
 
@@ -58,9 +75,34 @@
 
     }
 
-    return response.json();
+    return await response.json();
 
   }
+  catch (error) {
+
+    if (
+      error?.name ===
+      "AbortError"
+    ) {
+
+      throw new Error(
+        "Forecast request timed out."
+      );
+
+    }
+
+    throw error;
+
+  }
+  finally {
+
+    clearTimeout(
+      timeout
+    );
+
+  }
+
+}
 
 
   function valueAt(array, index) {
