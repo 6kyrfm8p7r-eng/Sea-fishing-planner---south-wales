@@ -1,20 +1,23 @@
 /* =========================================================
    BASS FINDER WALES — APP CONTROLLER
 
-   V3 HYBRID INTELLIGENCE TEST
+   NOW
+   ---
+   Wales-wide 24-hour hybrid scan.
 
-   NOW:
-   - scans all fishing marks
-   - uses clustered forecasts for initial screening
-   - re-fetches finalists at exact coordinates
-   - runs exact fishing + safety analysis
-   - returns Best Overall / Best Low / Best High
+   7 DAYS
+   ------
+   Efficient weekly hybrid scan.
+   Best LOW and HIGH water opportunity for each day.
 
-   7 DAYS:
-   - placeholder until NOW engine is proven
+   MARKS
+   -----
+   Fishing DNA information.
 
-   MARKS:
-   - Fishing DNA information
+   IMPORTANT
+   ---------
+   NOW and 7-DAY results are cached independently so
+   changing tabs does not keep repeating expensive API calls.
    ========================================================= */
 
 (function () {
@@ -64,19 +67,40 @@
     currentView:
       "now",
 
-    loading:
+
+    /* NOW */
+
+    nowLoading:
       false,
 
-    hybridResult:
+    nowResult:
       null,
 
-    hybridError:
+    nowError:
       null,
 
-    hybridPromise:
+    nowPromise:
       null,
 
-    lastUpdated:
+    nowUpdated:
+      null,
+
+
+    /* 7 DAYS */
+
+    plannerLoading:
+      false,
+
+    plannerResult:
+      null,
+
+    plannerError:
+      null,
+
+    plannerPromise:
+      null,
+
+    plannerUpdated:
       null
 
   };
@@ -129,7 +153,9 @@
       !window?.start ||
       !window?.end
     ) {
+
       return "—";
+
     }
 
 
@@ -151,6 +177,17 @@
 
 
   function formatScore(value) {
+
+    if (
+      value === null ||
+      value === undefined ||
+      value === ""
+    ) {
+
+      return "—";
+
+    }
+
 
     const number =
       Number(value);
@@ -189,11 +226,51 @@
 
   function tideName(value) {
 
+    if (value === "high") {
+      return "HIGH WATER";
+    }
+
+
+    if (value === "low") {
+      return "LOW WATER";
+    }
+
+
+    return "TIDE";
+
+  }
+
+
+  function tideIcon(value) {
+
     return value === "high"
-      ? "HIGH WATER"
-      : value === "low"
-        ? "LOW WATER"
-        : "TIDE";
+      ? "↗"
+      : "↘";
+
+  }
+
+
+  function opportunityConfidence(
+    opportunity
+  ) {
+
+    return formatScore(
+      opportunity
+        ?.confidence
+        ?.score
+    );
+
+  }
+
+
+  function opportunitySafetyRisk(
+    opportunity
+  ) {
+
+    return formatScore(
+      opportunity
+        ?.safetyRisk
+    );
 
   }
 
@@ -229,21 +306,32 @@
 
 
     /*
-     If NOW has never been analysed,
-     start the hybrid engine.
-
-     If results already exist, do NOT
-     repeat all API requests simply
-     because the user changed tabs.
+     Start NOW only if it has not already been loaded.
     */
 
     if (
       view === "now" &&
-      !state.hybridResult &&
-      !state.hybridPromise
+      !state.nowResult &&
+      !state.nowPromise
     ) {
 
-      runHybridAnalysis();
+      runNowAnalysis();
+
+    }
+
+
+    /*
+     Start weekly analysis only when the user opens
+     the 7 DAYS tab for the first time.
+    */
+
+    if (
+      view === "planner" &&
+      !state.plannerResult &&
+      !state.plannerPromise
+    ) {
+
+      runPlannerAnalysis();
 
     }
 
@@ -269,12 +357,13 @@
 
 
   /* =======================================================
-     LOADING VIEW
+     NOW LOADING VIEW
      ======================================================= */
 
-  function renderHybridLoading() {
+  function renderNowLoading() {
 
     return `
+
       <section class="card">
 
         <div class="eyebrow">
@@ -287,8 +376,8 @@
 
         <p class="card-subtitle">
           Screening all fishing marks,
-          then checking the strongest
-          contenders at their exact coordinates.
+          then checking the strongest contenders
+          at their exact coordinates.
         </p>
 
       </section>
@@ -372,13 +461,14 @@
         </div>
 
       </section>
+
     `;
 
   }
 
 
   /* =======================================================
-     OPPORTUNITY CARD
+     FULL NOW OPPORTUNITY CARD
      ======================================================= */
 
   function renderOpportunity(
@@ -389,6 +479,7 @@
     if (!opportunity) {
 
       return `
+
         <section class="card">
 
           <div class="eyebrow">
@@ -400,29 +491,26 @@
           </h2>
 
           <p class="card-subtitle">
-            No safe qualifying session was
-            found in this category during
-            the next 24 hours.
+            No safe qualifying session was found
+            in this category during the next 24 hours.
           </p>
 
         </section>
+
       `;
 
     }
 
 
     const confidence =
-      formatScore(
+      opportunityConfidence(
         opportunity
-          .confidence
-          ?.score
       );
 
 
     const safetyRisk =
-      formatScore(
+      opportunitySafetyRisk(
         opportunity
-          .safetyRisk
       );
 
 
@@ -433,6 +521,7 @@
 
 
     return `
+
       <section class="card dashboard-card">
 
         <div class="mark-heading">
@@ -470,7 +559,9 @@
           <div class="metric-box">
 
             <div class="metric-icon">
-              ${opportunity.tideReference === "high" ? "↗" : "↘"}
+              ${tideIcon(
+                opportunity.tideReference
+              )}
             </div>
 
             <div class="metric-label">
@@ -540,8 +631,7 @@
 
             <div class="metric-value">
               ${formatWindow(
-                opportunity
-                  .primeWindow
+                opportunity.primeWindow
               )}
             </div>
 
@@ -601,188 +691,35 @@
           opportunity.forcedEarlyDeparture
 
             ? `
+
               <div
                 class="status-pill status-caution"
                 style="margin-top:10px;"
               >
+
                 ⚠ Conditions deteriorate —
                 leave earlier than the full
                 Fishing DNA window.
+
               </div>
+
             `
 
             : ""
         }
-        ${
-          label === "BEST OVERALL"
 
-            ? `
-              <div style="margin-top:18px;">
-
-                <div class="eyebrow">
-                  TEMPORARY SCORE AUDIT
-                </div>
-
-                <div class="component-grid">
-
-                  <div class="component">
-                    <small>TIDE SCORE</small>
-                    <strong>
-                      ${opportunity.bestComponents?.tide ?? "—"}
-                    </strong>
-                  </div>
-
-                  <div class="component">
-                    <small>SWELL SCORE</small>
-                    <strong>
-                      ${opportunity.bestComponents?.swell ?? "—"}
-                    </strong>
-                  </div>
-
-                  <div class="component">
-                    <small>WIND SCORE</small>
-                    <strong>
-                      ${opportunity.bestComponents?.wind ?? "—"}
-                    </strong>
-                  </div>
-
-                  <div class="component">
-                    <small>CLARITY</small>
-                    <strong>
-                      ${opportunity.bestComponents?.clarity ?? "—"}
-                    </strong>
-                  </div>
-
-                  <div class="component">
-                    <small>CLOUD</small>
-                    <strong>
-                      ${opportunity.bestComponents?.cloud ?? "—"}
-                    </strong>
-                  </div>
-
-                  <div class="component">
-                    <small>SEA TEMP SCORE</small>
-                    <strong>
-                      ${opportunity.bestComponents?.seaTemperature ?? "—"}
-                    </strong>
-                  </div>
-
-                  <div class="component">
-                    <small>LIGHT BOOST</small>
-                    <strong>
-                      ${opportunity.bestComponents?.lightBoost ?? "—"}
-                    </strong>
-                  </div>
-
-                  <div class="component">
-                    <small>WAVE HEIGHT</small>
-                    <strong>
-                      ${
-                        Number.isFinite(
-                          Number(opportunity.bestHour?.waveHeight)
-                        )
-                          ? `${Number(opportunity.bestHour.waveHeight).toFixed(2)} m`
-                          : "—"
-                      }
-                    </strong>
-                  </div>
-
-                  <div class="component">
-                    <small>SWELL HEIGHT</small>
-                    <strong>
-                      ${
-                        Number.isFinite(
-                          Number(opportunity.bestHour?.swellHeight)
-                        )
-                          ? `${Number(opportunity.bestHour.swellHeight).toFixed(2)} m`
-                          : "—"
-                      }
-                    </strong>
-                  </div>
-
-                  <div class="component">
-                    <small>SWELL PERIOD</small>
-                    <strong>
-                      ${
-                        Number.isFinite(
-                          Number(opportunity.bestHour?.swellPeriod)
-                        )
-                          ? `${Number(opportunity.bestHour.swellPeriod).toFixed(1)} s`
-                          : "—"
-                      }
-                    </strong>
-                  </div>
-
-                  <div class="component">
-                    <small>WIND SPEED</small>
-                    <strong>
-                      ${
-                        Number.isFinite(
-                          Number(opportunity.bestHour?.windSpeed)
-                        )
-                          ? `${Math.round(Number(opportunity.bestHour.windSpeed))}`
-                          : "—"
-                      }
-                    </strong>
-                  </div>
-
-                  <div class="component">
-                    <small>WIND DIR</small>
-                    <strong>
-                      ${
-                        Number.isFinite(
-                          Number(opportunity.bestHour?.windDirection)
-                        )
-                          ? `${Math.round(Number(opportunity.bestHour.windDirection))}°`
-                          : "—"
-                      }
-                    </strong>
-                  </div>
-
-                  <div class="component">
-                    <small>WIND GUST</small>
-                    <strong>
-                      ${
-                        Number.isFinite(
-                          Number(opportunity.bestHour?.windGust)
-                        )
-                          ? `${Math.round(Number(opportunity.bestHour.windGust))}`
-                          : "—"
-                      }
-                    </strong>
-                  </div>
-
-                  <div class="component">
-                    <small>SEA TEMP</small>
-                    <strong>
-                      ${
-                        Number.isFinite(
-                          Number(opportunity.bestHour?.seaTemperature)
-                        )
-                          ? `${Number(opportunity.bestHour.seaTemperature).toFixed(1)}°C`
-                          : "—"
-                      }
-                    </strong>
-                  </div>
-
-                </div>
-
-              </div>
-            `
-
-            : ""
-        }
       </section>
+
     `;
 
   }
 
 
   /* =======================================================
-     DIAGNOSTICS CARD
+     NOW ENGINE DIAGNOSTICS
      ======================================================= */
 
-  function renderDiagnostics(
+  function renderNowDiagnostics(
     result
   ) {
 
@@ -807,6 +744,7 @@
 
 
     return `
+
       <section class="card">
 
         <div class="eyebrow">
@@ -901,13 +839,13 @@
 
 
         <p class="card-subtitle">
-          Final recommendations above are based
-          on exact-coordinate forecasts for the
-          shortlisted marks, not the shared
-          first-pass forecast.
+          Final recommendations above use
+          exact-coordinate forecasts for the
+          shortlisted marks.
         </p>
 
       </section>
+
     `;
 
   }
@@ -919,16 +857,17 @@
 
   function renderNow() {
 
-    if (state.loading) {
+    if (state.nowLoading) {
 
-      return renderHybridLoading();
+      return renderNowLoading();
 
     }
 
 
-    if (state.hybridError) {
+    if (state.nowError) {
 
       return `
+
         <section class="card">
 
           <div class="eyebrow">
@@ -940,18 +879,20 @@
           </h2>
 
           <p class="card-subtitle">
-            ${state.hybridError}
+            ${state.nowError}
           </p>
 
         </section>
+
       `;
 
     }
 
 
-    if (!state.hybridResult) {
+    if (!state.nowResult) {
 
       return `
+
         <section class="card">
 
           <div class="eyebrow">
@@ -968,16 +909,18 @@
           </p>
 
         </section>
+
       `;
 
     }
 
 
     const result =
-      state.hybridResult;
+      state.nowResult;
 
 
     return `
+
       <section class="card">
 
         <div class="eyebrow">
@@ -989,9 +932,9 @@
         </h2>
 
         <p class="card-subtitle">
-          Every recommendation shown below
-          survived the exact-coordinate
-          fishing and safety recheck.
+          Every recommendation below survived
+          the exact-coordinate fishing and
+          safety recheck.
         </p>
 
       </section>
@@ -1015,102 +958,23 @@
       )}
 
 
-      ${renderDiagnostics(
+      ${renderNowDiagnostics(
         result
       )}
+
     `;
 
   }
 
 
   /* =======================================================
-     7-DAY PLANNER
+     7-DAY LOADING VIEW
      ======================================================= */
 
-  function renderPlanner() {
-
-    const days = [];
-
-    const today =
-      new Date();
-
-
-    for (
-      let offset = 0;
-      offset < 7;
-      offset++
-    ) {
-
-      const date =
-        new Date(today);
-
-
-      date.setDate(
-        today.getDate() +
-        offset
-      );
-
-
-      const confidence =
-        U.getForecastConfidence(
-          date
-        );
-
-
-      days.push(`
-        <section class="card">
-
-          <div class="eyebrow">
-            ${U.formatDayHeading(
-              date
-            )}
-          </div>
-
-          <h2 class="card-title">
-            Best low & high water
-          </h2>
-
-          <p class="card-subtitle">
-            ${confidence.label}
-          </p>
-
-
-          <div class="planner-grid">
-
-            <div class="planner-option">
-
-              <div class="eyebrow">
-                LOW WATER
-              </div>
-
-              <strong>
-                Coming next
-              </strong>
-
-            </div>
-
-
-            <div class="planner-option">
-
-              <div class="eyebrow">
-                HIGH WATER
-              </div>
-
-              <strong>
-                Coming next
-              </strong>
-
-            </div>
-
-          </div>
-
-        </section>
-      `);
-
-    }
-
+  function renderPlannerLoading() {
 
     return `
+
       <section class="card">
 
         <div class="eyebrow">
@@ -1118,19 +982,765 @@
         </div>
 
         <h2 class="card-title">
-          Plan the best session
+          Analysing the week…
         </h2>
 
         <p class="card-subtitle">
-          Once the NOW hybrid engine is
-          validated, this same intelligence
-          will rank each day's best low-water
-          and high-water opportunities.
+          Screening every fishing mark across
+          seven days, then validating the strongest
+          candidates using exact-coordinate forecasts.
         </p>
 
       </section>
 
-      ${days.join("")}
+
+      <section class="card">
+
+        <div class="eyebrow">
+          EFFICIENT WEEKLY SCAN
+        </div>
+
+        <div class="component-grid">
+
+          <div class="component">
+
+            <small>
+              STAGE 1
+            </small>
+
+            <strong>
+              Wales-wide scan
+            </strong>
+
+          </div>
+
+
+          <div class="component">
+
+            <small>
+              STAGE 2
+            </small>
+
+            <strong>
+              Exact finalists
+            </strong>
+
+          </div>
+
+
+          <div class="component">
+
+            <small>
+              OUTPUT
+            </small>
+
+            <strong>
+              Best low
+            </strong>
+
+          </div>
+
+
+          <div class="component">
+
+            <small>
+              OUTPUT
+            </small>
+
+            <strong>
+              Best high
+            </strong>
+
+          </div>
+
+        </div>
+
+      </section>
+
+    `;
+
+  }
+
+
+  /* =======================================================
+     COMPACT 7-DAY OPPORTUNITY
+     ======================================================= */
+
+  function renderPlannerOption(
+    opportunity,
+    tideType
+  ) {
+
+    const label =
+      tideType === "high"
+        ? "HIGH WATER"
+        : "LOW WATER";
+
+
+    const icon =
+      tideType === "high"
+        ? "↗"
+        : "↘";
+
+
+    if (!opportunity) {
+
+      return `
+
+        <div class="planner-option">
+
+          <div class="eyebrow">
+            ${icon} ${label}
+          </div>
+
+          <strong>
+            No safe opportunity
+          </strong>
+
+          <p class="card-subtitle">
+            No qualifying session found.
+          </p>
+
+        </div>
+
+      `;
+
+    }
+
+
+    const score =
+      formatScore(
+        opportunity.score
+      );
+
+
+    const confidence =
+      opportunityConfidence(
+        opportunity
+      );
+
+
+    const risk =
+      opportunitySafetyRisk(
+        opportunity
+      );
+
+
+    const departure =
+      opportunity
+        .latestDeparture
+        ?.time;
+
+
+    return `
+
+      <details class="planner-option">
+
+        <summary
+          style="
+            cursor:pointer;
+            list-style:none;
+          "
+        >
+
+          <div class="eyebrow">
+            ${icon} ${label}
+          </div>
+
+          <div
+            style="
+              display:flex;
+              justify-content:space-between;
+              align-items:flex-start;
+              gap:12px;
+              margin-top:7px;
+            "
+          >
+
+            <div>
+
+              <strong
+                style="
+                  display:block;
+                  font-size:1.05rem;
+                "
+              >
+                ${opportunity.markName || "Unknown mark"}
+              </strong>
+
+              <small
+                style="
+                  display:block;
+                  margin-top:4px;
+                  opacity:.7;
+                "
+              >
+                ${String(
+                  opportunity.region || ""
+                ).toUpperCase()}
+              </small>
+
+            </div>
+
+
+            <div class="version-pill">
+              ${score}
+            </div>
+
+          </div>
+
+
+          <div
+            style="
+              margin-top:13px;
+              display:grid;
+              grid-template-columns:1fr 1fr;
+              gap:10px;
+            "
+          >
+
+            <div>
+
+              <small>
+                TIDE
+              </small>
+
+              <strong
+                style="
+                  display:block;
+                  margin-top:3px;
+                "
+              >
+                ${formatTime(
+                  opportunity.tideTime
+                )}
+              </strong>
+
+            </div>
+
+
+            <div>
+
+              <small>
+                PRIME WINDOW
+              </small>
+
+              <strong
+                style="
+                  display:block;
+                  margin-top:3px;
+                "
+              >
+                ${formatWindow(
+                  opportunity.primeWindow
+                )}
+              </strong>
+
+            </div>
+
+          </div>
+
+        </summary>
+
+
+        <div
+          style="
+            margin-top:16px;
+            padding-top:14px;
+            border-top:1px solid rgba(255,255,255,.12);
+          "
+        >
+
+          <div class="component-grid">
+
+            <div class="component">
+
+              <small>
+                FISHING SCORE
+              </small>
+
+              <strong>
+                ${score}/100
+              </strong>
+
+            </div>
+
+
+            <div class="component">
+
+              <small>
+                CONFIDENCE
+              </small>
+
+              <strong>
+                ${confidence}/100
+              </strong>
+
+            </div>
+
+
+            <div class="component">
+
+              <small>
+                BEST SAFE HOUR
+              </small>
+
+              <strong>
+                ${formatTime(
+                  opportunity
+                    .bestHour
+                    ?.time
+                )}
+              </strong>
+
+            </div>
+
+
+            <div class="component">
+
+              <small>
+                LEAVE BY
+              </small>
+
+              <strong>
+                ${formatTime(
+                  departure
+                )}
+              </strong>
+
+            </div>
+
+          </div>
+
+
+          <div
+            class="
+              status-pill
+              ${safetyClass(
+                opportunity.safetyLevel
+              )}
+            "
+            style="margin-top:14px;"
+          >
+
+            ${opportunity.safetyIcon || "✓"}
+
+            ${opportunity.safetyLabel || "Safety checked"}
+
+            · ${risk}/100 risk
+
+          </div>
+
+
+          ${
+            opportunity.forcedEarlyDeparture
+
+              ? `
+
+                <div
+                  class="status-pill status-caution"
+                  style="margin-top:10px;"
+                >
+
+                  ⚠ Conditions deteriorate —
+                  leave earlier than the normal
+                  Fishing DNA window.
+
+                </div>
+
+              `
+
+              : ""
+          }
+
+        </div>
+
+      </details>
+
+    `;
+
+  }
+
+
+  /* =======================================================
+     ONE 7-DAY DAY CARD
+     ======================================================= */
+
+  function renderPlannerDay(
+    day,
+    index
+  ) {
+
+    const date =
+      day?.date
+        ? new Date(day.date)
+        : null;
+
+
+    let heading =
+      `DAY ${index + 1}`;
+
+
+    if (
+      date &&
+      !Number.isNaN(
+        date.getTime()
+      )
+    ) {
+
+      try {
+
+        heading =
+          U.formatDayHeading(
+            date
+          );
+
+      }
+      catch (error) {
+
+        heading =
+          `DAY ${index + 1}`;
+
+      }
+
+    }
+
+
+    let forecastConfidence =
+      null;
+
+
+    if (date) {
+
+      try {
+
+        forecastConfidence =
+          U.getForecastConfidence(
+            date
+          );
+
+      }
+      catch (error) {
+
+        forecastConfidence =
+          null;
+
+      }
+
+    }
+
+
+    return `
+
+      <section class="card">
+
+        <div class="eyebrow">
+          ${heading}
+        </div>
+
+        <h2 class="card-title">
+          Best low & high water
+        </h2>
+
+        <p class="card-subtitle">
+          ${
+            forecastConfidence?.label ||
+            "Forecast confidence calculated"
+          }
+        </p>
+
+
+        <div
+          class="planner-grid"
+          style="
+            display:grid;
+            gap:14px;
+          "
+        >
+
+          ${renderPlannerOption(
+            day?.low,
+            "low"
+          )}
+
+
+          ${renderPlannerOption(
+            day?.high,
+            "high"
+          )}
+
+        </div>
+
+      </section>
+
+    `;
+
+  }
+
+
+  /* =======================================================
+     WEEKLY DIAGNOSTICS
+     ======================================================= */
+
+  function renderPlannerDiagnostics(
+    result
+  ) {
+
+    const diagnostics =
+      result?.diagnostics || {};
+
+
+    const clusterFailures =
+      Array.isArray(
+        diagnostics.clusterFailures
+      )
+        ? diagnostics.clusterFailures.length
+        : 0;
+
+
+    const exactFailures =
+      Array.isArray(
+        diagnostics.exactFailures
+      )
+        ? diagnostics.exactFailures.length
+        : 0;
+
+
+    return `
+
+      <section class="card">
+
+        <div class="eyebrow">
+          WEEKLY ENGINE
+        </div>
+
+        <h2 class="card-title">
+          7-day scan completed
+        </h2>
+
+
+        <div class="component-grid">
+
+          <div class="component">
+
+            <small>
+              MARKS
+            </small>
+
+            <strong>
+              ${diagnostics.requestedMarks ?? "—"}
+            </strong>
+
+          </div>
+
+
+          <div class="component">
+
+            <small>
+              DAYS
+            </small>
+
+            <strong>
+              ${diagnostics.plannerDays ?? "—"}
+            </strong>
+
+          </div>
+
+
+          <div class="component">
+
+            <small>
+              CLUSTERS
+            </small>
+
+            <strong>
+              ${diagnostics.clusterCount ?? "—"}
+            </strong>
+
+          </div>
+
+
+          <div class="component">
+
+            <small>
+              UNIQUE EXACT CHECKS
+            </small>
+
+            <strong>
+              ${diagnostics.exactChecks ?? "—"}
+            </strong>
+
+          </div>
+
+
+          <div class="component">
+
+            <small>
+              CLUSTER FAILURES
+            </small>
+
+            <strong>
+              ${clusterFailures}
+            </strong>
+
+          </div>
+
+
+          <div class="component">
+
+            <small>
+              EXACT FAILURES
+            </small>
+
+            <strong>
+              ${exactFailures}
+            </strong>
+
+          </div>
+
+        </div>
+
+      </section>
+
+    `;
+
+  }
+
+
+  /* =======================================================
+     7-DAY PLANNER VIEW
+     ======================================================= */
+
+  function renderPlanner() {
+
+    if (state.plannerLoading) {
+
+      return renderPlannerLoading();
+
+    }
+
+
+    if (state.plannerError) {
+
+      return `
+
+        <section class="card">
+
+          <div class="eyebrow">
+            7-DAY PLANNER
+          </div>
+
+          <h2 class="card-title">
+            Weekly analysis failed
+          </h2>
+
+          <p class="card-subtitle">
+            ${state.plannerError}
+          </p>
+
+        </section>
+
+      `;
+
+    }
+
+
+    if (!state.plannerResult) {
+
+      return `
+
+        <section class="card">
+
+          <div class="eyebrow">
+            7-DAY PLANNER
+          </div>
+
+          <h2 class="card-title">
+            Plan the best session
+          </h2>
+
+          <p class="card-subtitle">
+            Preparing the weekly
+            fishing intelligence engine…
+          </p>
+
+        </section>
+
+      `;
+
+    }
+
+
+    const days =
+      Array.isArray(
+        state
+          .plannerResult
+          .days
+      )
+        ? state
+            .plannerResult
+            .days
+        : [];
+
+
+    return `
+
+      <section class="card">
+
+        <div class="eyebrow">
+          7-DAY PLANNER
+        </div>
+
+        <h2 class="card-title">
+          Best sessions this week
+        </h2>
+
+        <p class="card-subtitle">
+          Each day shows the strongest safe
+          low-water and high-water opportunity
+          surviving exact-coordinate validation.
+          Tap an option for more detail.
+        </p>
+
+      </section>
+
+
+      ${
+        days.length
+
+          ? days
+              .map(
+                (day, index) =>
+                  renderPlannerDay(
+                    day,
+                    index
+                  )
+              )
+              .join("")
+
+          : `
+
+            <section class="card">
+
+              <h2 class="card-title">
+                No weekly opportunities found
+              </h2>
+
+              <p class="card-subtitle">
+                No qualifying safe sessions were
+                returned by the weekly engine.
+              </p>
+
+            </section>
+
+          `
+      }
+
+
+      ${renderPlannerDiagnostics(
+        state.plannerResult
+      )}
+
     `;
 
   }
@@ -1143,6 +1753,7 @@
   function renderMarks() {
 
     return `
+
       <section class="card">
 
         <div class="eyebrow">
@@ -1155,8 +1766,7 @@
 
         <p class="card-subtitle">
           Each mark has its own tidal behaviour,
-          sea-state preferences,
-          light preferences,
+          sea-state preferences, light preferences,
           safety rules and evidence confidence.
         </p>
 
@@ -1180,6 +1790,7 @@
         </p>
 
       </section>
+
     `;
 
   }
@@ -1229,27 +1840,22 @@
 
 
   /* =======================================================
-     RUN HYBRID ANALYSIS
+     RUN NOW ANALYSIS
      ======================================================= */
 
-  async function runHybridAnalysis() {
+  async function runNowAnalysis() {
 
-    /*
-     Prevent duplicate scans if the user
-     taps NOW repeatedly while loading.
-    */
+    if (state.nowPromise) {
 
-    if (state.hybridPromise) {
-
-      return state.hybridPromise;
+      return state.nowPromise;
 
     }
 
 
-    state.loading =
+    state.nowLoading =
       true;
 
-    state.hybridError =
+    state.nowError =
       null;
 
 
@@ -1268,7 +1874,7 @@
         .analyseNext24Hours();
 
 
-    state.hybridPromise =
+    state.nowPromise =
       job;
 
 
@@ -1278,40 +1884,35 @@
         await job;
 
 
-      state.hybridResult =
+      state.nowResult =
         result;
 
-      state.lastUpdated =
+      state.nowUpdated =
         new Date();
 
     }
     catch (error) {
 
       console.error(
-        "Bass Finder Wales hybrid analysis failed:",
+        "Bass Finder Wales NOW analysis failed:",
         error
       );
 
 
-      state.hybridError =
+      state.nowError =
         error?.message ||
         String(error) ||
-        "Unknown hybrid analysis error.";
+        "Unknown NOW analysis error.";
 
     }
     finally {
 
-      state.loading =
+      state.nowLoading =
         false;
 
-      state.hybridPromise =
+      state.nowPromise =
         null;
 
-
-      /*
-       Don't overwrite another tab if the
-       user moved away while analysis ran.
-      */
 
       if (
         state.currentView ===
@@ -1325,7 +1926,115 @@
     }
 
 
-    return state.hybridResult;
+    return state.nowResult;
+
+  }
+
+
+  /* =======================================================
+     RUN 7-DAY ANALYSIS
+     ======================================================= */
+
+  async function runPlannerAnalysis() {
+
+    if (state.plannerPromise) {
+
+      return state.plannerPromise;
+
+    }
+
+
+    if (
+      typeof Hybrid
+        .analyseNext7Days !==
+      "function"
+    ) {
+
+      state.plannerError =
+        "7-day hybrid engine is not available.";
+
+      render();
+
+      return null;
+
+    }
+
+
+    state.plannerLoading =
+      true;
+
+    state.plannerError =
+      null;
+
+
+    if (
+      state.currentView ===
+      "planner"
+    ) {
+
+      render();
+
+    }
+
+
+    const job =
+      Hybrid
+        .analyseNext7Days();
+
+
+    state.plannerPromise =
+      job;
+
+
+    try {
+
+      const result =
+        await job;
+
+
+      state.plannerResult =
+        result;
+
+      state.plannerUpdated =
+        new Date();
+
+    }
+    catch (error) {
+
+      console.error(
+        "Bass Finder Wales 7-day analysis failed:",
+        error
+      );
+
+
+      state.plannerError =
+        error?.message ||
+        String(error) ||
+        "Unknown 7-day analysis error.";
+
+    }
+    finally {
+
+      state.plannerLoading =
+        false;
+
+      state.plannerPromise =
+        null;
+
+
+      if (
+        state.currentView ===
+        "planner"
+      ) {
+
+        render();
+
+      }
+
+    }
+
+
+    return state.plannerResult;
 
   }
 
@@ -1337,11 +2046,18 @@
   render();
 
 
-  runHybridAnalysis();
+  /*
+   NOW starts immediately.
+
+   The heavier weekly planner waits until
+   the user actually opens the 7 DAYS tab.
+  */
+
+  runNowAnalysis();
 
 
   console.log(
-    "Bass Finder Wales V3: hybrid app controller started."
+    "Bass Finder Wales: NOW + 7-day app controller ready."
   );
 
 })();
