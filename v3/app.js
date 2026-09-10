@@ -613,7 +613,165 @@
 
             : ""
         }
+        ${
+          label === "BEST OVERALL"
 
+            ? `
+              <div style="margin-top:18px;">
+
+                <div class="eyebrow">
+                  TEMPORARY SCORE AUDIT
+                </div>
+
+                <div class="component-grid">
+
+                  <div class="component">
+                    <small>TIDE SCORE</small>
+                    <strong>
+                      ${opportunity.bestComponents?.tide ?? "—"}
+                    </strong>
+                  </div>
+
+                  <div class="component">
+                    <small>SWELL SCORE</small>
+                    <strong>
+                      ${opportunity.bestComponents?.swell ?? "—"}
+                    </strong>
+                  </div>
+
+                  <div class="component">
+                    <small>WIND SCORE</small>
+                    <strong>
+                      ${opportunity.bestComponents?.wind ?? "—"}
+                    </strong>
+                  </div>
+
+                  <div class="component">
+                    <small>CLARITY</small>
+                    <strong>
+                      ${opportunity.bestComponents?.clarity ?? "—"}
+                    </strong>
+                  </div>
+
+                  <div class="component">
+                    <small>CLOUD</small>
+                    <strong>
+                      ${opportunity.bestComponents?.cloud ?? "—"}
+                    </strong>
+                  </div>
+
+                  <div class="component">
+                    <small>SEA TEMP SCORE</small>
+                    <strong>
+                      ${opportunity.bestComponents?.seaTemperature ?? "—"}
+                    </strong>
+                  </div>
+
+                  <div class="component">
+                    <small>LIGHT BOOST</small>
+                    <strong>
+                      ${opportunity.bestComponents?.lightBoost ?? "—"}
+                    </strong>
+                  </div>
+
+                  <div class="component">
+                    <small>WAVE HEIGHT</small>
+                    <strong>
+                      ${
+                        Number.isFinite(
+                          Number(opportunity.bestHour?.waveHeight)
+                        )
+                          ? `${Number(opportunity.bestHour.waveHeight).toFixed(2)} m`
+                          : "—"
+                      }
+                    </strong>
+                  </div>
+
+                  <div class="component">
+                    <small>SWELL HEIGHT</small>
+                    <strong>
+                      ${
+                        Number.isFinite(
+                          Number(opportunity.bestHour?.swellHeight)
+                        )
+                          ? `${Number(opportunity.bestHour.swellHeight).toFixed(2)} m`
+                          : "—"
+                      }
+                    </strong>
+                  </div>
+
+                  <div class="component">
+                    <small>SWELL PERIOD</small>
+                    <strong>
+                      ${
+                        Number.isFinite(
+                          Number(opportunity.bestHour?.swellPeriod)
+                        )
+                          ? `${Number(opportunity.bestHour.swellPeriod).toFixed(1)} s`
+                          : "—"
+                      }
+                    </strong>
+                  </div>
+
+                  <div class="component">
+                    <small>WIND SPEED</small>
+                    <strong>
+                      ${
+                        Number.isFinite(
+                          Number(opportunity.bestHour?.windSpeed)
+                        )
+                          ? `${Math.round(Number(opportunity.bestHour.windSpeed))}`
+                          : "—"
+                      }
+                    </strong>
+                  </div>
+
+                  <div class="component">
+                    <small>WIND DIR</small>
+                    <strong>
+                      ${
+                        Number.isFinite(
+                          Number(opportunity.bestHour?.windDirection)
+                        )
+                          ? `${Math.round(Number(opportunity.bestHour.windDirection))}°`
+                          : "—"
+                      }
+                    </strong>
+                  </div>
+
+                  <div class="component">
+                    <small>WIND GUST</small>
+                    <strong>
+                      ${
+                        Number.isFinite(
+                          Number(opportunity.bestHour?.windGust)
+                        )
+                          ? `${Math.round(Number(opportunity.bestHour.windGust))}`
+                          : "—"
+                      }
+                    </strong>
+                  </div>
+
+                  <div class="component">
+                    <small>SEA TEMP</small>
+                    <strong>
+                      ${
+                        Number.isFinite(
+                          Number(opportunity.bestHour?.seaTemperature)
+                        )
+                          ? `${Number(opportunity.bestHour.seaTemperature).toFixed(1)}°C`
+                          : "—"
+                      }
+                    </strong>
+                  </div>
+
+                </div>
+
+              </div>
+            `
+
+            : ""
+        }
       </section>
     `;
 
