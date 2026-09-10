@@ -948,27 +948,120 @@
         profile
       );
 
+/*
+ Main fishing-condition score.
 
-    /*
-     Main fishing-condition score.
+ Tide and sea state carry the most weight.
 
-     Tide and sea state carry the most weight.
-     Light is an additive DNA boost rather than a full
-     standalone weighted metric.
-    */
+ IMPORTANT:
+ Light is now a finishing influence rather than a
+ straight additive bonus. The better the base
+ conditions already are, the less room light has
+ to inflate the result.
 
-    let score =
+ Scores above 90 are also gently compressed so
+ 95+ genuinely represents exceptional conditions.
 
-      tide * 0.30 +
-      swell * 0.22 +
-      wind * 0.18 +
-      clarity * 0.15 +
-      cloud * 0.08 +
-      seaTemperature * 0.07;
+ 100/100 is reserved for a near-perfect alignment
+ of all the major fishing factors.
+*/
+
+const baseScore =
+
+  tide * 0.30 +
+  swell * 0.22 +
+  wind * 0.18 +
+  clarity * 0.15 +
+  cloud * 0.08 +
+  seaTemperature * 0.07;
 
 
-    score +=
-      lightBoost;
+/*
+ Light can improve a session, but it cannot turn an
+ already excellent forecast into an artificial 100.
+
+ Example:
+ a base score of 96 has only 4 points of headroom,
+ so even a strong dawn/dusk boost only has a small
+ effect.
+*/
+
+const headroom =
+  Math.max(
+    0,
+    100 - baseScore
+  );
+
+
+const effectiveLightBoost =
+  Math.max(
+    0,
+    lightBoost
+  ) *
+  (
+    headroom /
+    100
+  );
+
+
+let score =
+  baseScore +
+  effectiveLightBoost;
+
+
+/*
+ Compress the very top of the scale.
+
+ 90 stays 90.
+ 95 becomes roughly 94.
+ 98 becomes roughly 96.
+ 100 would become 98 unless it passes the
+ exceptional-condition test below.
+*/
+
+if (score > 90) {
+
+  score =
+    90 +
+    (
+      score - 90
+    ) * 0.8;
+
+}
+
+
+/*
+ A genuine 100 should be extremely rare.
+
+ It requires effectively perfect tide, swell and wind,
+ plus excellent clarity, cloud and sea temperature.
+*/
+
+const exceptionalConditions =
+
+  tide >= 99 &&
+  swell >= 99 &&
+  wind >= 99 &&
+  clarity >= 95 &&
+  cloud >= 95 &&
+  seaTemperature >= 95 &&
+  baseScore >= 99.5;
+
+
+if (exceptionalConditions) {
+
+  score = 100;
+
+}
+else {
+
+  score =
+    Math.min(
+      score,
+      98
+    );
+
+}
 
 
     return {
