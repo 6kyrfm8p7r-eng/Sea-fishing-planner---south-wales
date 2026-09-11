@@ -103,6 +103,20 @@ function extractBassText(sectionHtml) {
 
 }
 
+function splitEvidenceSentences(text) {
+
+  return String(text || "")
+    .split(
+      /(?<=[.!?])\s+/
+    )
+    .map(
+      sentence =>
+        sentence.trim()
+    )
+    .filter(Boolean);
+
+}
+
 function classifyBassEvidence(text) {
 
   const value =
@@ -264,6 +278,7 @@ module.exports = {
   cleanText,
   parseReportDate,
   extractBassText,
+  splitEvidenceSentences,
   classifyBassEvidence,
   parseFishingInWales
 
