@@ -151,25 +151,7 @@ async function runCollector() {
       }
     );
 
- 
-  
-  console.log(
-    `Parsed Fishing in Wales reports: ${parsedReports.length}`
-  );
-
-  console.log(
-    `Reports mentioning bass: ${bassReports.length}`
-  );
-
-    console.log(
-    `Bass reports within 30 days: ${recentBassReports.length}`
-  );
-
-  console.log(
-    `Fishing in Wales source candidates: ${sourceCandidates.length}`
-  );
-
-  const sourceCandidates =
+   const sourceCandidates =
     recentBassReports
       .flatMap(
         report =>
@@ -206,6 +188,22 @@ async function runCollector() {
                 )
           )
       );
+  
+  console.log(
+    `Parsed Fishing in Wales reports: ${parsedReports.length}`
+  );
+
+  console.log(
+    `Reports mentioning bass: ${bassReports.length}`
+  );
+
+    console.log(
+    `Bass reports within 30 days: ${recentBassReports.length}`
+  );
+
+  console.log(
+    `Fishing in Wales source candidates: ${sourceCandidates.length}`
+  );
   
   const evidenceBreakdown =
     bassReports
