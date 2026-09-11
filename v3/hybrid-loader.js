@@ -2184,8 +2184,7 @@ return {
 
           }
 
-
-          return {
+return {
 
             date:
               day.date,
@@ -2197,34 +2196,31 @@ return {
               day.end,
 
             overall:
-              result
-                ?.overall ||
-              null,
+              addBassActivity(
+                result?.overall || null
+              ),
 
             low:
-              result
-                ?.low ||
-              null,
+              addBassActivity(
+                result?.low || null
+              ),
 
             high:
-              result
-                ?.high ||
-              null,
+              addBassActivity(
+                result?.high || null
+              ),
 
             all:
-              result
-                ?.all ||
-              [],
+              (result?.all || [])
+                .map(addBassActivity),
 
             lows:
-              result
-                ?.lows ||
-              [],
+              (result?.lows || [])
+                .map(addBassActivity),
 
             highs:
-              result
-                ?.highs ||
-              [],
+              (result?.highs || [])
+                .map(addBassActivity),
 
             screenedCount:
               day
@@ -2237,6 +2233,7 @@ return {
                 .length
 
           };
+  
 
         }
       );
