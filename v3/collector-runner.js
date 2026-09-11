@@ -7,6 +7,10 @@ const path = require("path");
 const CollectorContract =
   require("./collector-contract.js");
 const {
+  mapCatchLocations
+} =
+  require("./catch-location-mapper.js");
+const {
   fetchFishingInWales
 } =
   require("./sources/fishing-in-wales.js");
@@ -188,7 +192,97 @@ async function runCollector() {
                 )
           )
       );
-  
+    const mappedCandidates =
+    mapCatchLocations(
+      sourceCandidates
+    );
+
+
+  const mappedLocationCandidates =
+    mappedCandidates.filter(
+      candidate =>
+        candidate.locationStatus ===
+        "MAPPED"
+    );
+
+
+  const unmappedLocationCandidates =
+    mappedCandidates.filter(
+      candidate =>
+        candidate.locationStatus ===
+        "UNMAPPED"
+    );
+
+
+  const ambiguousLocationCandidates =
+    mappedCandidates.filter(
+      candidate =>
+        candidate.locationStatus ===
+        "AMBIGUOUS"
+    );
+
+
+  console.log(
+    `Mapped shore catches: ${mappedLocationCandidates.length}`
+  );
+
+
+  console.log(
+    `Unmapped shore catches: ${unmappedLocationCandidates.length}`
+  );
+
+
+  console.log(
+    `Ambiguous shore catches: ${ambiguousLocationCandidates.length}`
+  );
+
+
+  console.log(
+    "Mapped catch samples:",
+    mappedLocationCandidates
+      .slice(0, 20)
+      .map(
+        candidate => ({
+
+          date:
+            candidate.date,
+
+          heading:
+            candidate.heading,
+
+          markId:
+            candidate.markId,
+
+          matched:
+            candidate.locationMatch,
+
+          notes:
+            candidate.notes
+
+        })
+      )
+  );
+
+
+  console.log(
+    "Unmapped catch samples:",
+    unmappedLocationCandidates
+      .slice(0, 20)
+      .map(
+        candidate => ({
+
+          date:
+            candidate.date,
+
+          heading:
+            candidate.heading,
+
+          notes:
+            candidate.notes
+
+        })
+      )
+  );
   console.log(
     `Parsed Fishing in Wales reports: ${parsedReports.length}`
   );
