@@ -564,13 +564,25 @@
         a.notes
       );
 
-    const bNotes =
+        const bNotes =
       normaliseIdentityValue(
         b.notes
       );
 
 
-        const aWords =
+    const ignoredSimilarityWords =
+      new Set([
+        "bass",
+        "fish",
+        "fishing",
+        "catch",
+        "caught",
+        "lure",
+        "lures"
+      ]);
+
+
+    const aWords =
       new Set(
         aNotes
           .replace(
@@ -585,9 +597,12 @@
                 ""
               )
           )
-          .filter(
+                    .filter(
             word =>
-              word.length >= 4
+              word.length >= 4 &&
+              !ignoredSimilarityWords.has(
+                word
+              )
           )
       );
 
@@ -606,9 +621,12 @@
                 ""
               )
           )
-          .filter(
+                    .filter(
             word =>
-              word.length >= 4
+              word.length >= 4 &&
+              !ignoredSimilarityWords.has(
+                word
+              )
           )
       );
 
