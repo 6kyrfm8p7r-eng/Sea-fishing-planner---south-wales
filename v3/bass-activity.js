@@ -570,9 +570,13 @@
       );
 
 
-       const aWords =
+        const aWords =
       new Set(
         aNotes
+          .replace(
+            /[-‐-‒–—/]+/gu,
+            " "
+          )
           .split(/\s+/)
           .map(
             word =>
@@ -590,6 +594,10 @@
     const bWords =
       new Set(
         bNotes
+          .replace(
+            /[-‐-‒–—/]+/gu,
+            " "
+          )
           .split(/\s+/)
           .map(
             word =>
