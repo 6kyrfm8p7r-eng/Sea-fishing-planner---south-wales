@@ -1216,7 +1216,7 @@
      The existing safety engine remains authoritative.
      ======================================================= */
 
-  function calculateOpportunityScore(
+    function calculateOpportunityScore(
     fishingScore,
     activity
   ) {
@@ -1250,6 +1250,14 @@
         100
       )
     );
+
+  }
+
+
+  /* =======================================================
+     PUBLIC API
+     ======================================================= */
+
   window.SeaPlannerBassActivity = {
 
     settings:
@@ -1288,8 +1296,6 @@
     calculateOpportunityScore
 
   };
-  }
-
 
   /* =======================================================
      PUBLIC API
