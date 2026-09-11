@@ -1373,32 +1373,119 @@ const confidence =
           "
         >
 
-          <div class="component-grid">
+  <div class="component-grid">
 
-            <div class="component">
+  <div class="component">
 
-              <small>
-                FISHING SCORE
-              </small>
+    <small>
+      FISHING SCORE
+    </small>
 
-              <strong>
-                ${score}/100
-              </strong>
+    <strong>
+      ${score}/100
+    </strong>
 
-            </div>
+  </div>
 
 
-            <div class="component">
+  <div class="component">
 
-              <small>
-                CONFIDENCE
-              </small>
+    <small>
+      BASS ACTIVITY
+    </small>
 
-              <strong>
-                ${confidence}/100
-              </strong>
+    <strong>
+      ${
+        activity
+          ? `${formatScore(
+              activity.score
+            )}/100`
+          : "—"
+      }
+    </strong>
 
-            </div>
+  </div>
+
+
+  <div class="component">
+
+    <small>
+      OPPORTUNITY SCORE
+    </small>
+
+    <strong>
+      ${formatScore(
+        opportunityScore
+      )}/100
+    </strong>
+
+  </div>
+
+
+  <div class="component">
+
+    <small>
+      ACTIVITY CONFIDENCE
+    </small>
+
+    <strong>
+      ${
+        activity
+          ? `${formatScore(
+              activity.confidence
+            )}/100`
+          : "—"
+      }
+    </strong>
+
+  </div>
+
+
+  <div class="component">
+
+    <small>
+      FORECAST CONFIDENCE
+    </small>
+
+    <strong>
+      ${confidence}/100
+    </strong>
+
+  </div>
+
+
+  <div class="component">
+
+    <small>
+      BEST SAFE HOUR
+    </small>
+
+    <strong>
+      ${formatTime(
+        opportunity
+          .bestHour
+          ?.time
+      )}
+    </strong>
+
+  </div>
+
+
+  <div class="component">
+
+    <small>
+      LEAVE BY
+    </small>
+
+    <strong>
+      ${formatTime(
+        departure
+      )}
+    </strong>
+
+  </div>
+
+</div>
 
 
             <div class="component">
