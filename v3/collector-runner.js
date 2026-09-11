@@ -116,7 +116,38 @@ async function runCollector() {
       report =>
         report.bassText.length > 0
     );
+  const now =
+    new Date();
 
+  const thirtyDaysAgo =
+    new Date(
+      now.getTime() -
+      (30 * 24 * 60 * 60 * 1000)
+    );
+
+
+  const recentBassReports =
+    bassReports.filter(
+      report => {
+
+        if (!report.reportDate) {
+          return false;
+        }
+
+
+        const reportDate =
+          new Date(
+            `${report.reportDate}T00:00:00Z`
+          );
+
+
+        return (
+          reportDate <= now &&
+          reportDate >= thirtyDaysAgo
+        );
+
+      }
+    );
 
   console.log(
     `Parsed Fishing in Wales reports: ${parsedReports.length}`
@@ -124,6 +155,10 @@ async function runCollector() {
 
   console.log(
     `Reports mentioning bass: ${bassReports.length}`
+  );
+
+    console.log(
+    `Bass reports within 30 days: ${recentBassReports.length}`
   );
 
   console.log(
