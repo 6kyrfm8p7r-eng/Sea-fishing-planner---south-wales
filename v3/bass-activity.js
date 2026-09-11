@@ -501,23 +501,42 @@
      same mark.
     */
 
-    const sameMark =
+    const aMark =
       normaliseIdentityValue(
         a.markId
-      ) ===
+      );
+
+    const bMark =
       normaliseIdentityValue(
         b.markId
       );
 
 
-    const sameSpecies =
+    const sameMark =
+      Boolean(
+        aMark &&
+        bMark &&
+        aMark === bMark
+      );
+
+
+    const aSpecies =
       normaliseIdentityValue(
         a.species
-      ) ===
+      );
+
+    const bSpecies =
       normaliseIdentityValue(
         b.species
       );
 
+
+    const sameSpecies =
+      Boolean(
+        aSpecies &&
+        bSpecies &&
+        aSpecies === bSpecies
+      );
 
     const sameCaughtState =
       a.caught ===
