@@ -205,7 +205,132 @@ async function runCollector() {
         "MAPPED"
     );
 
+  /* =======================================================
+     BASS ACTIVITY CANDIDATE CONVERSION
 
+     Diagnostic only.
+     Only recent, mapped shore-catch evidence reaches here.
+     This does NOT write to bass-reports.json.
+     ======================================================= */
+
+  const bassActivityCandidates =
+    mappedLocationCandidates
+      .map(
+        candidate => {
+
+          const fingerprint =
+            [
+              candidate.sourceId,
+              candidate.date,
+              candidate.markId,
+              candidate.notes
+            ]
+              .map(
+                value =>
+                  String(value || "")
+                    .trim()
+                    .toLowerCase()
+                    .replace(/\s+/g, " ")
+              )
+              .join("|");
+
+
+          return (
+            CollectorContract
+              .normaliseCollectorReport({
+                id: null,
+
+                markId:
+                  candidate.markId,
+
+                species:
+                  "bass",
+
+                caught:
+                  true,
+
+                date:
+                  candidate.date
+                    ? `${candidate.date}T00:00:00Z`
+                    : null,
+
+                sourceId:
+                  candidate.sourceId,
+
+                sourceType:
+                  "website",
+
+                sourceName:
+                  "Fishing in Wales",
+
+                externalPostId:
+                  null,
+
+                sourceUrl:
+                  candidate.sourceUrl,
+
+                fingerprint,
+
+                catchEventId:
+                  null,
+
+                verified:
+                  false,
+
+                notes:
+                  candidate.notes
+              })
+          );
+
+        }
+      )
+      .filter(Boolean);
+
+
+  console.log(
+    `Bass Activity candidates: ${bassActivityCandidates.length}`
+  );
+
+
+  console.log(
+    "Bass Activity candidate samples:",
+    bassActivityCandidates
+      .slice(0, 20)
+      .map(
+        report => ({
+          markId:
+            report.markId,
+
+          species:
+            report.species,
+
+          caught:
+            report.caught,
+
+          date:
+            report.date,
+
+          sourceId:
+            report.sourceId,
+
+          sourceType:
+            report.sourceType,
+
+          sourceName:
+            report.sourceName,
+
+          fingerprint:
+            report.fingerprint,
+
+          verified:
+            report.verified,
+
+          notes:
+            report.notes
+        })
+      )
+  );
+  
   const unmappedLocationCandidates =
     mappedCandidates.filter(
       candidate =>
