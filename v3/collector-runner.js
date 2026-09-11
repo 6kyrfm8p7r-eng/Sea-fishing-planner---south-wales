@@ -942,26 +942,6 @@ async function runCollector() {
       )
   );
 
-
-  console.log(
-    "Historical ambiguous samples:",
-    historicalAmbiguous
-      .slice(0, 40)
-      .map(
-        candidate => ({
-
-          date:
-            candidate.date,
-
-          heading:
-            candidate.heading,
-
-          notes:
-            candidate.notes
-
-        })
-      )
-  );
   
   console.log(
     `Parsed Fishing in Wales reports: ${parsedReports.length}`
