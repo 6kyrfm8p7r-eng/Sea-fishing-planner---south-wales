@@ -26,6 +26,12 @@ const {
 const REPORTS_PATH =
   path.join(DATA_DIR, "bass-reports.json");
 
+const BROWSER_REPORTS_PATH =
+  path.join(
+    DATA_DIR,
+    "bass-reports.js"
+  );
+
 const SCAN_STATE_PATH =
   path.join(DATA_DIR, "scan-state.json");
 
@@ -38,6 +44,42 @@ function readJson(filePath) {
 
 }
 
+function writeJson(
+  filePath,
+  value
+) {
+
+  fs.writeFileSync(
+    filePath,
+    JSON.stringify(
+      value,
+      null,
+      2
+    ) + "\n",
+    "utf8"
+  );
+
+}
+
+
+function writeBrowserReportData(
+  filePath,
+  value
+) {
+
+  fs.writeFileSync(
+    filePath,
+    "window.SeaPlannerBassReportData = " +
+      JSON.stringify(
+        value,
+        null,
+        2
+      ) +
+      ";\n",
+    "utf8"
+  );
+
+}
 
 async function runCollector() {
 
@@ -329,6 +371,221 @@ async function runCollector() {
             report.notes
         })
       )
+  );
+
+  /* =======================================================
+     PERSIST RECENT MAPPED REPORTS
+
+     Only the existing 30-day + SHORE_CATCH + MAPPED
+     pipeline can reach this point.
+
+     Reports are deduplicated by fingerprint.
+     Reports older than 30 days are removed.
+     ======================================================= */
+
+  const retainedReports = [];
+
+  const storedFingerprints =
+    new Set();
+
+
+  for (
+    const report of
+    normalisedReports
+  ) {
+
+    if (!report?.date) {
+      continue;
+    }
+
+
+    const reportDate =
+      new Date(
+        report.date
+      );
+
+
+    if (
+      Number.isNaN(
+        reportDate.getTime()
+      ) ||
+      reportDate > now ||
+      reportDate < thirtyDaysAgo
+    ) {
+
+      continue;
+
+    }
+
+
+    const fingerprint =
+      String(
+        report.fingerprint || ""
+      )
+        .trim()
+        .toLowerCase();
+
+
+    if (
+      fingerprint &&
+      storedFingerprints.has(
+        fingerprint
+      )
+    ) {
+
+      continue;
+
+    }
+
+
+    if (fingerprint) {
+
+      storedFingerprints.add(
+        fingerprint
+      );
+
+    }
+
+
+    retainedReports.push(
+      report
+    );
+
+  }
+
+
+  let addedReportCount = 0;
+
+
+  for (
+    const candidate of
+    bassActivityCandidates
+  ) {
+
+    const fingerprint =
+      String(
+        candidate?.fingerprint || ""
+      )
+        .trim()
+        .toLowerCase();
+
+
+    /*
+     A persisted automatic report must have
+     a deterministic fingerprint.
+    */
+
+    if (!fingerprint) {
+      continue;
+    }
+
+
+    if (
+      storedFingerprints.has(
+        fingerprint
+      )
+    ) {
+
+      continue;
+
+    }
+
+
+    retainedReports.push(
+      candidate
+    );
+
+    storedFingerprints.add(
+      fingerprint
+    );
+
+    addedReportCount++;
+
+  }
+
+
+  const removedReportCount =
+    Math.max(
+      0,
+      normalisedReports.length -
+      (
+        retainedReports.length -
+        addedReportCount
+      )
+    );
+
+
+  const reportStoreChanged =
+    addedReportCount > 0 ||
+    removedReportCount > 0;
+
+
+  const browserStoreMissing =
+    !fs.existsSync(
+      BROWSER_REPORTS_PATH
+    );
+
+
+  const nextReportStore = {
+
+    schemaVersion:
+      Number(
+        reportStore.schemaVersion
+      ) || 1,
+
+    updatedAt:
+      reportStoreChanged
+        ? now.toISOString()
+        : (
+            reportStore.updatedAt ||
+            null
+          ),
+
+    reports:
+      retainedReports
+
+  };
+
+
+  if (reportStoreChanged) {
+
+    writeJson(
+      REPORTS_PATH,
+      nextReportStore
+    );
+
+  }
+
+
+  if (
+    reportStoreChanged ||
+    browserStoreMissing
+  ) {
+
+    writeBrowserReportData(
+      BROWSER_REPORTS_PATH,
+      nextReportStore
+    );
+
+  }
+
+
+  console.log(
+    `Persisted reports: ${retainedReports.length}`
+  );
+
+  console.log(
+    `New reports added: ${addedReportCount}`
+  );
+
+  console.log(
+    `Expired/duplicate reports removed: ${removedReportCount}`
+  );
+
+  console.log(
+    reportStoreChanged
+      ? "Report store updated."
+      : "Report store unchanged."
   );
   
   const unmappedLocationCandidates =
