@@ -63,10 +63,27 @@
   }
 
 
-  window.SeaPlannerCollectorContract = {
+   const CollectorContract = {
 
     normaliseCollectorReport
 
   };
+
+
+  if (typeof window !== "undefined") {
+
+    window.SeaPlannerCollectorContract =
+      CollectorContract;
+
+  }
+
+
+  if (typeof module !== "undefined" &&
+      module.exports) {
+
+    module.exports =
+      CollectorContract;
+
+  }
 
 })();
