@@ -123,6 +123,25 @@ function classifyBassEvidence(text) {
     String(text || "")
       .toLowerCase();
 
+
+  /*
+   The individual sentence must
+   actually mention bass.
+  */
+
+  const mentionsBass =
+    /\bbass\b/.test(
+      value
+    );
+
+
+  if (!mentionsBass) {
+
+    return "GENERAL";
+
+  }
+
+
   const offshore =
     /\b(kayak|charter|boat|afloat|offshore)\b/.test(
       value
@@ -136,7 +155,7 @@ function classifyBassEvidence(text) {
 
 
   const shoreContext =
-    /\b(shore|shores|beach|pier|barrage|rock marks|from the rocks|off the rocks)\b/.test(
+    /\b(shore|shores|beach|pier|barrage|dock|docks|mark|marks|rock marks|from the rocks|off the rocks)\b/.test(
       value
     );
 
@@ -169,16 +188,22 @@ function classifyBassEvidence(text) {
   }
 
 
-  if (prediction) {
-
-    return "PREDICTION";
-
-  }
-
+  /*
+   Confirmed shore catches take
+   priority over prediction words
+   elsewhere in the same sentence.
+  */
 
   if (shoreCatch) {
 
     return "SHORE_CATCH";
+
+  }
+
+
+  if (prediction) {
+
+    return "PREDICTION";
 
   }
 
