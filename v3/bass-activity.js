@@ -1356,11 +1356,91 @@
       negativeEvidence;
 
 
+    /*
+     Corroborating posts must not increase activity score,
+     but genuinely independent sources can slightly raise
+     confidence in a grouped catch event.
+    */
+
+    const groupedEventIds =
+      new Set(
+        reports
+          .map(
+            report =>
+              normaliseIdentityValue(
+                report.catchEventId
+              )
+          )
+          .filter(Boolean)
+      );
+
+
+    const eventSourcePairs =
+      new Set();
+
+
+    for (
+      const report of
+      getReportsForMark(
+        markOrId,
+        now
+      )
+    ) {
+
+      const eventId =
+        normaliseIdentityValue(
+          report.catchEventId
+        );
+
+      const sourceId =
+        normaliseIdentityValue(
+          report.sourceId ||
+          report.sourceName
+        );
+
+
+      if (
+        eventId &&
+        sourceId &&
+        groupedEventIds.has(
+          eventId
+        )
+      ) {
+
+        eventSourcePairs.add(
+          eventId +
+          ":" +
+          sourceId
+        );
+
+      }
+
+    }
+
+
+    const corroborationCount =
+      Math.max(
+        0,
+        eventSourcePairs.size -
+        groupedEventIds.size
+      );
+
+
+    const corroborationBonus =
+      Math.min(
+        corroborationCount * 5,
+        15
+      );
+
+
     const confidence =
       clamp(
         Math.round(
-          totalEvidence *
-          35
+          (
+            totalEvidence *
+            35
+          ) +
+          corroborationBonus
         ),
         0,
         100
