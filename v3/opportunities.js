@@ -154,7 +154,143 @@
 
   }
 
+  function tidalRangeForEvent(
+    tideEvent,
+    events
+  ) {
 
+    if (
+      !tideEvent ||
+      !Array.isArray(events)
+    ) {
+      return null;
+    }
+
+
+    const eventTime =
+      timeValue(
+        tideEvent.modelTime ||
+        tideEvent.time
+      );
+
+    const eventLevel =
+      Number(
+        tideEvent.seaLevel
+      );
+
+
+    if (
+      eventTime === null ||
+      !Number.isFinite(eventLevel)
+    ) {
+      return null;
+    }
+
+
+    const previousOpposite =
+      events
+        .filter(event => {
+
+          if (
+            !event ||
+            event.type === tideEvent.type
+          ) {
+            return false;
+          }
+
+
+          const time =
+            timeValue(
+              event.time
+            );
+
+          const level =
+            Number(
+              event.seaLevel
+            );
+
+
+          return (
+            time !== null &&
+            time < eventTime &&
+            Number.isFinite(level)
+          );
+
+        })
+        .sort(
+          (a, b) =>
+            timeValue(b.time) -
+            timeValue(a.time)
+        )[0];
+
+
+    if (!previousOpposite) {
+      return null;
+    }
+
+
+    const previousTime =
+      timeValue(
+        previousOpposite.time
+      );
+
+    const previousLevel =
+      Number(
+        previousOpposite.seaLevel
+      );
+
+
+    const hoursApart =
+      (
+        eventTime -
+        previousTime
+      ) / 3600000;
+
+
+    if (
+      !Number.isFinite(hoursApart) ||
+      hoursApart <= 0 ||
+      hoursApart > 8
+    ) {
+      return null;
+    }
+
+
+    const metres =
+      Math.abs(
+        eventLevel -
+        previousLevel
+      );
+
+
+    if (
+      !Number.isFinite(metres) ||
+      metres <= 0
+    ) {
+      return null;
+    }
+
+
+    return {
+
+      metres:
+        Math.round(
+          metres * 10
+        ) / 10,
+
+      previousType:
+        previousOpposite.type,
+
+      currentType:
+        tideEvent.type,
+
+      source:
+        "Open-Meteo modelled sea-level range"
+
+    };
+
+  }
+   
   /* =======================================================
      WINDOW HELPERS
      ======================================================= */
@@ -536,6 +672,7 @@
     mark,
     forecast,
     tideEvent,
+    tideEvents,
     primeWindow,
     now = new Date(),
     horizonEnd
@@ -630,8 +767,15 @@
       );
 
 
-    const tideReference =
+      const tideReference =
       tideEvent.type;
+
+
+    const tidalRange =
+      tidalRangeForEvent(
+        tideEvent,
+        tideEvents
+      );
 
 
     return {
@@ -651,8 +795,10 @@
 
       tideEvent,
 
-      tideTime:
+           tideTime:
         tideEvent.time,
+
+      tidalRange,
 
       primeWindow,
 
@@ -935,8 +1081,11 @@
 
           forecast,
 
-          tideEvent:
+                  tideEvent:
             candidate.event,
+
+          tideEvents:
+            tideData.events,
 
           primeWindow:
             candidate.window,
