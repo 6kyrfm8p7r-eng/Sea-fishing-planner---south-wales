@@ -10,7 +10,10 @@ const {
   fetchFishingInWales
 } =
   require("./sources/fishing-in-wales.js");
-
+const {
+  parseFishingInWales
+} =
+  require("./sources/fishing-in-wales-parser.js");
 const DATA_DIR =
   path.join(__dirname, "data");
 
@@ -101,6 +104,42 @@ async function runCollector() {
   console.log(
     "First headings:",
     headingMatches.slice(0, 12)
+  );
+    const parsedReports =
+    parseFishingInWales(
+      fishingInWales.html
+    );
+
+
+  const bassReports =
+    parsedReports.filter(
+      report =>
+        report.bassText.length > 0
+    );
+
+
+  console.log(
+    `Parsed Fishing in Wales reports: ${parsedReports.length}`
+  );
+
+  console.log(
+    `Reports mentioning bass: ${bassReports.length}`
+  );
+
+  console.log(
+    "First bass reports:",
+    bassReports
+      .slice(0, 5)
+      .map(
+        report => ({
+          heading:
+            report.heading,
+          reportDate:
+            report.reportDate,
+          bassText:
+            report.bassText
+        })
+      )
   );
 }
 
