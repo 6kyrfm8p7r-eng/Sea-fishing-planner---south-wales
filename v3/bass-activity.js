@@ -570,10 +570,17 @@
       );
 
 
-    const aWords =
+       const aWords =
       new Set(
         aNotes
           .split(/\s+/)
+          .map(
+            word =>
+              word.replace(
+                /[^\p{L}\p{N}]+/gu,
+                ""
+              )
+          )
           .filter(
             word =>
               word.length >= 4
@@ -584,6 +591,13 @@
       new Set(
         bNotes
           .split(/\s+/)
+          .map(
+            word =>
+              word.replace(
+                /[^\p{L}\p{N}]+/gu,
+                ""
+              )
+          )
           .filter(
             word =>
               word.length >= 4
