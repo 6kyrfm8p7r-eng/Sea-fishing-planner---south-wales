@@ -137,9 +137,9 @@ function classifyBassEvidence(text) {
 
 
   const shoreContext =
-    /\b(shore|shores|beach|rocks|rock|pier|barrage)\b/.test(
+    /\b(shore|shores|beach|pier|barrage|rock marks|from the rocks|off the rocks)\b/.test(
       value
-    );
+    ); 
 
 
   const catchEvidence =
