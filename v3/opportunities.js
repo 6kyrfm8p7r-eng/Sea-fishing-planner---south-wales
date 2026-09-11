@@ -290,7 +290,185 @@
     };
 
   }
-   
+    function tidalRangePreferenceFor(
+    mark,
+    tidalRange,
+    events
+  ) {
+
+    const preference =
+      String(
+        Profiles?.get
+          ? Profiles.get(mark)
+              ?.tideRangePreference
+          : "neutral"
+      ).toLowerCase();
+
+
+    if (
+      !tidalRange ||
+      !Number.isFinite(
+        Number(
+          tidalRange.metres
+        )
+      ) ||
+      !Array.isArray(events) ||
+      preference === "neutral"
+    ) {
+
+      return {
+        preference,
+        percentile:
+          null,
+        fitScore:
+          50,
+        adjustment:
+          0
+      };
+
+    }
+
+
+    const ranges =
+      events
+        .map(event =>
+          tidalRangeForEvent(
+            event,
+            events
+          )
+        )
+        .map(result =>
+          Number(
+            result?.metres
+          )
+        )
+        .filter(Number.isFinite)
+        .sort(
+          (a, b) =>
+            a - b
+        );
+
+
+    if (ranges.length < 4) {
+
+      return {
+        preference,
+        percentile:
+          null,
+        fitScore:
+          50,
+        adjustment:
+          0
+      };
+
+    }
+
+
+    const current =
+      Number(
+        tidalRange.metres
+      );
+
+
+    const below =
+      ranges.filter(
+        value =>
+          value < current
+      ).length;
+
+
+    const equal =
+      ranges.filter(
+        value =>
+          value === current
+      ).length;
+
+
+    const percentile =
+      clamp(
+        (
+          below +
+          equal * 0.5
+        ) /
+        ranges.length,
+        0,
+        1
+      );
+
+
+    let fitScore = 50;
+
+
+    if (
+      preference === "small"
+    ) {
+
+      fitScore =
+        (
+          1 -
+          percentile
+        ) * 100;
+
+    }
+    else if (
+      preference === "mid"
+    ) {
+
+      fitScore =
+        (
+          1 -
+          Math.abs(
+            percentile - 0.5
+          ) * 2
+        ) * 100;
+
+    }
+    else if (
+      preference === "large"
+    ) {
+
+      fitScore =
+        percentile * 100;
+
+    }
+
+
+    fitScore =
+      clamp(
+        fitScore,
+        0,
+        100
+      );
+
+
+    const adjustment =
+      (
+        fitScore - 50
+      ) * 0.10;
+
+
+    return {
+
+      preference,
+
+      percentile:
+        Math.round(
+          percentile * 100
+        ),
+
+      fitScore:
+        Math.round(
+          fitScore
+        ),
+
+      adjustment:
+        Math.round(
+          adjustment * 10
+        ) / 10
+
+    };
+
+    } 
   /* =======================================================
      WINDOW HELPERS
      ======================================================= */
@@ -771,11 +949,48 @@
       tideEvent.type;
 
 
-    const tidalRange =
+       const tidalRange =
       tidalRangeForEvent(
         tideEvent,
         tideEvents
       );
+
+
+    const tidalRangePreference =
+      tidalRangePreferenceFor(
+        mark,
+        tidalRange,
+        tideEvents
+      );
+
+
+    const rangeAdjustment =
+      Number(
+        tidalRangePreference
+          ?.adjustment
+      ) || 0;
+
+
+    const adjustedBestScore =
+      best.score === 100
+        ? 100
+        : clamp(
+            best.score +
+            rangeAdjustment,
+            0,
+            98
+          );
+
+
+    const adjustedWindowScore =
+      safeAverage === null
+        ? null
+        : clamp(
+            safeAverage +
+            rangeAdjustment,
+            0,
+            98
+          );
 
 
     return {
@@ -798,7 +1013,9 @@
            tideTime:
         tideEvent.time,
 
-      tidalRange,
+            tidalRange,
+
+      tidalRangePreference,
 
       primeWindow,
 
@@ -808,23 +1025,34 @@
        score if its best hour is unsafe.
       */
 
-      score:
+            score:
         Math.round(
-          best.score
+          adjustedBestScore
         ),
 
-      windowScore:
-        safeAverage === null
+          windowScore:
+        adjustedWindowScore === null
           ? null
           : Math.round(
-              safeAverage
+              adjustedWindowScore
             ),
 
       bestHour:
         best.hour,
 
-      bestComponents:
-        best.components,
+           bestComponents: {
+
+        ...best.components,
+
+        tideRangeFit:
+          tidalRangePreference
+            .fitScore,
+
+        tideRangeAdjustment:
+          tidalRangePreference
+            .adjustment
+
+      },
 
       bestHourSafetyRisk:
         best.safetyRisk,
