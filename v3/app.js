@@ -423,12 +423,16 @@ function activityForOpportunity(
 
   <div class="component">
 
+    <div class="icon">
+      1
+    </div>
+
     <small>
-      FISHING SCORE
+      FIRST PASS
     </small>
 
     <strong>
-      ${score}/100
+      Coastal scan
     </strong>
 
   </div>
@@ -436,21 +440,55 @@ function activityForOpportunity(
 
   <div class="component">
 
+    <div class="icon">
+      2
+    </div>
+
     <small>
-      BASS ACTIVITY
+      FINALISTS
     </small>
 
     <strong>
-      ${
-        activity
-          ? `${formatScore(
-              activity.score
-            )}/100`
-          : "—"
-      }
+      Exact coordinates
     </strong>
 
   </div>
+
+
+  <div class="component">
+
+    <div class="icon">
+      ≈
+    </div>
+
+    <small>
+      MARINE
+    </small>
+
+    <strong>
+      Swell checked
+    </strong>
+
+  </div>
+
+
+  <div class="component">
+
+    <div class="icon">
+      ⚠
+    </div>
+
+    <small>
+      SAFETY
+    </small>
+
+    <strong>
+      Independent
+    </strong>
+
+  </div>
+
+</div>
 
 
   <div class="component">
