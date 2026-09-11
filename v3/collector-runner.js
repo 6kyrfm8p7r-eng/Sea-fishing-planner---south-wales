@@ -151,30 +151,7 @@ async function runCollector() {
       }
     );
 
-  const sourceCandidates =
-    recentBassReports.map(
-      report => ({
-
-        sourceId:
-          "web-fishing-in-wales",
-
-        sourceUrl:
-          fishingInWales.sourceUrl,
-
-        species:
-          "bass",
-
-        date:
-          report.reportDate,
-
-        heading:
-          report.heading,
-
-        notes:
-          report.bassText.join(" ")
-
-      })
-    );
+ 
   
   console.log(
     `Parsed Fishing in Wales reports: ${parsedReports.length}`
@@ -192,6 +169,44 @@ async function runCollector() {
     `Fishing in Wales source candidates: ${sourceCandidates.length}`
   );
 
+  const sourceCandidates =
+    recentBassReports
+      .flatMap(
+        report =>
+          report.bassText.flatMap(
+            text =>
+              splitEvidenceSentences(text)
+                .filter(
+                  sentence =>
+                    classifyBassEvidence(sentence) ===
+                    "SHORE_CATCH"
+                )
+                .map(
+                  sentence => ({
+
+                    sourceId:
+                      "web-fishing-in-wales",
+
+                    sourceUrl:
+                      fishingInWales.sourceUrl,
+
+                    species:
+                      "bass",
+
+                    date:
+                      report.reportDate,
+
+                    heading:
+                      report.heading,
+
+                    notes:
+                      sentence
+
+                  })
+                )
+          )
+      );
+  
   const evidenceBreakdown =
     bassReports
       .flatMap(
