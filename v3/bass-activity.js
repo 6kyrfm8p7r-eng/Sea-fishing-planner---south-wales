@@ -1392,16 +1392,33 @@
           report.catchEventId
         );
 
-      const sourceId =
+            const sourceId =
         normaliseIdentityValue(
-          report.sourceId ||
-          report.sourceName
+          report.sourceId
+        );
+
+
+      const registeredSource =
+        REPORT_SOURCES.find(
+          source =>
+            normaliseIdentityValue(
+              source.id
+            ) ===
+            sourceId
+        );
+
+
+      const validSource =
+        Boolean(
+          registeredSource &&
+          registeredSource.enabled !== false
         );
 
 
       if (
-        eventId &&
+               eventId &&
         sourceId &&
+        validSource &&
         groupedEventIds.has(
           eventId
         )
