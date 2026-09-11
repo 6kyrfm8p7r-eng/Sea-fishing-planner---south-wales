@@ -244,6 +244,23 @@ const BassActivity =
 
   }
 
+  function formatTidalRange(
+    tidalRange
+  ) {
+
+    const metres =
+      Number(
+        tidalRange?.metres
+      );
+
+    if (!Number.isFinite(metres)) {
+      return "—";
+    }
+
+    return `${metres.toFixed(1)} m`;
+
+  }
+   
   function safetyClass(level) {
 
     switch (
@@ -740,6 +757,30 @@ const opportunityScore =
             </div>
 
           </div>
+
+        <div
+          class="tide-grid"
+          style="
+            margin-top:12px;
+            grid-template-columns:1fr;
+          "
+        >
+
+          <div class="tide-box">
+
+            <div class="metric-label">
+              MODELLED TIDAL RANGE
+            </div>
+
+            <div class="metric-value">
+              ${formatTidalRange(
+                opportunity.tidalRange
+              )}
+            </div>
+
+          </div>
+
+        </div>
 
         </div>
         <div
