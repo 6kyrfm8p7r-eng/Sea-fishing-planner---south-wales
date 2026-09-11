@@ -76,7 +76,32 @@ async function runCollector() {
   console.log(
     `Fishing in Wales fetched: ${fishingInWales.html.length} characters`
   );
+  const headingMatches =
+    [
+      ...fishingInWales.html.matchAll(
+        /<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi
+      )
+    ]
+      .map(
+        match =>
+          match[1]
+            .replace(/<[^>]+>/g, " ")
+            .replace(/&nbsp;/gi, " ")
+            .replace(/&amp;/gi, "&")
+            .replace(/\s+/g, " ")
+            .trim()
+      )
+      .filter(Boolean);
 
+
+  console.log(
+    `Fishing in Wales headings: ${headingMatches.length}`
+  );
+
+  console.log(
+    "First headings:",
+    headingMatches.slice(0, 12)
+  );
 }
 
 
