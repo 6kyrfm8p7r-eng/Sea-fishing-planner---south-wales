@@ -167,7 +167,60 @@ const BassActivity =
     ) {
       return fallback;
     }
+function addBassActivity(
+  opportunity
+) {
 
+  if (!opportunity) {
+    return null;
+  }
+
+  if (!BassActivity) {
+
+    return {
+      ...opportunity,
+      bassActivity: null,
+      opportunityScore:
+        opportunity.score
+    };
+
+  }
+
+  const markId =
+    opportunity.markId ||
+    opportunity.mark?.id ||
+    null;
+
+
+  const activity =
+    markId
+      ? BassActivity
+          .analyseMarkActivity(
+            markId
+          )
+      : null;
+
+
+  const opportunityScore =
+    BassActivity
+      .calculateOpportunityScore(
+        opportunity.score,
+        activity
+      );
+
+
+  return {
+
+    ...opportunity,
+
+    bassActivity:
+      activity,
+
+    opportunityScore
+
+  };
+
+}
 
     const parsed =
       Number(value);
