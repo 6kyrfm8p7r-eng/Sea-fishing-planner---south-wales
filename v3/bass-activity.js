@@ -537,7 +537,23 @@
         bSpecies &&
         aSpecies === bSpecies
       );
+    const aSource =
+      normaliseIdentityValue(
+        a.sourceId
+      );
 
+    const bSource =
+      normaliseIdentityValue(
+        b.sourceId
+      );
+
+
+    const differentSources =
+      Boolean(
+        aSource &&
+        bSource &&
+        aSource !== bSource
+      );
     const sameCaughtState =
       a.caught ===
       b.caught;
@@ -590,15 +606,15 @@
       ) <=
       6 * 60 * 60 * 1000;
 
-
     return Boolean(
       sameMark &&
       sameSpecies &&
+      differentSources &&
       sameCaughtState &&
       sameNotes &&
       withinSixHours
     );
-
+    
   }
 
 
