@@ -217,6 +217,29 @@ async function runCollector() {
     "Bass evidence classifications:",
     evidenceBreakdown
   );
+
+  const classificationSamples =
+    bassReports
+      .flatMap(
+        report =>
+          report.bassText.map(
+            text => ({
+
+              classification:
+                classifyBassEvidence(text),
+
+              text
+
+            })
+          )
+      )
+      .slice(0, 20);
+
+
+  console.log(
+    "Bass evidence samples:",
+    classificationSamples
+  );
   
   console.log(
     "First bass reports:",
