@@ -1316,7 +1316,13 @@
         positiveReports:
           0,
 
-        negativeReports:
+              negativeReports:
+          0,
+
+        corroborationCount:
+          0,
+
+        corroboratingSources:
           0,
 
         adjustment:
