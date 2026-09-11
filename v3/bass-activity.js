@@ -1659,7 +1659,12 @@
 
       positiveReports,
 
-      negativeReports,
+          negativeReports,
+
+      corroborationCount,
+
+      corroboratingSources:
+        eventSourcePairs.size,
 
       adjustment,
 
