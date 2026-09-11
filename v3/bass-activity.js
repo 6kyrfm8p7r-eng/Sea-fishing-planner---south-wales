@@ -586,10 +586,39 @@
       );
 
 
-    if (duplicate) {
+        if (duplicate) {
+
+      const originalFirstSeenAt =
+        duplicate.firstSeenAt ||
+        seenAt;
+
+
+      Object.entries(
+        candidate
+      ).forEach(
+        ([key, value]) => {
+
+          if (
+            value !== undefined &&
+            key !== "firstSeenAt" &&
+            key !== "lastSeenAt"
+          ) {
+
+            duplicate[key] =
+              value;
+
+          }
+
+        }
+      );
+
+
+      duplicate.firstSeenAt =
+        originalFirstSeenAt;
 
       duplicate.lastSeenAt =
         seenAt;
+
 
       return {
         action: "updated-existing",
