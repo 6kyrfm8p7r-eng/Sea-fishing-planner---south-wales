@@ -72,8 +72,160 @@
 
     maxNegativeAdjustment: -10
 
-  };
+  /* =======================================================
+     REPORT SOURCE REGISTRY
 
+     Trusted sources are preferred, but the future collector
+     may also accept newly-discovered public sources at a
+     lower confidence.
+
+     Source relevance controls evidence quality only.
+     It must NEVER affect safety.
+     ======================================================= */
+
+  const REPORT_SOURCES = [
+
+    {
+      id: "fb-bass-lure-fishing-wales",
+      platform: "facebook",
+      name: "Bass lure fishing wales",
+      region: "Wales",
+      sourceClass: "trusted-social",
+      relevance: 1.00,
+      enabled: true
+    },
+
+    {
+      id: "fb-lure-fishing-for-bass",
+      platform: "facebook",
+      name: "Lure fishing for bass",
+      region: "UK",
+      sourceClass: "trusted-social",
+      relevance: 0.80,
+      enabled: true
+    },
+
+    {
+      id: "fb-porthcawl-swansea-port-talbot",
+      platform: "facebook",
+      name: "Sea fishing porthcawl Swansea port talbot and local areas",
+      region: "South Wales",
+      sourceClass: "trusted-social",
+      relevance: 1.00,
+      enabled: true
+    },
+
+    {
+      id: "fb-sea-fishing-south-wales",
+      platform: "facebook",
+      name: "Sea fishing in south wales",
+      region: "South Wales",
+      sourceClass: "trusted-social",
+      relevance: 1.00,
+      enabled: true
+    },
+
+    {
+      id: "fb-sa1-sea-fishing",
+      platform: "facebook",
+      name: "Sa1 sea fishing Swansea Bay Area pier beach rocks n boat",
+      region: "Swansea Bay",
+      sourceClass: "trusted-social",
+      relevance: 1.00,
+      enabled: true
+    },
+
+    {
+      id: "fb-foreshore-fishing-locals",
+      platform: "facebook",
+      name: "Foreshore fishing for locals",
+      region: "South Wales",
+      sourceClass: "trusted-social",
+      relevance: 0.85,
+      enabled: true
+    },
+
+    {
+      id: "web-fishing-in-wales",
+      platform: "website",
+      name: "Fishing in Wales",
+      region: "Wales",
+      sourceClass: "trusted-public",
+      relevance: 0.90,
+      enabled: true
+    },
+
+    {
+      id: "reddit-seafishinguk",
+      platform: "reddit",
+      name: "r/SeafishingUK",
+      region: "UK",
+      sourceClass: "public-social",
+      relevance: 0.65,
+      enabled: true
+    },
+
+    {
+      id: "reddit-fishinguk",
+      platform: "reddit",
+      name: "r/fishingUK",
+      region: "UK",
+      sourceClass: "public-social",
+      relevance: 0.55,
+      enabled: true
+    },
+
+    {
+      id: "local-tackle-shop",
+      platform: "website-social",
+      name: "Local tackle shop reports",
+      region: "South Wales",
+      sourceClass: "discovered-local",
+      relevance: 0.80,
+      enabled: true
+    },
+
+    {
+      id: "local-angling-club",
+      platform: "website-social",
+      name: "Local angling club reports",
+      region: "South Wales",
+      sourceClass: "discovered-local",
+      relevance: 0.80,
+      enabled: true
+    },
+
+    {
+      id: "guide-charter-shore",
+      platform: "website-social",
+      name: "Local guide and charter shore reports",
+      region: "South Wales",
+      sourceClass: "discovered-local",
+      relevance: 0.70,
+      enabled: true
+    },
+
+    {
+      id: "manual-verified",
+      platform: "manual",
+      name: "Verified Bass Finder report",
+      region: "South Wales",
+      sourceClass: "verified",
+      relevance: 1.00,
+      enabled: true
+    },
+
+    {
+      id: "discovered-public",
+      platform: "public-web",
+      name: "Discovered public fishing report",
+      region: "Unknown",
+      sourceClass: "discovered",
+      relevance: 0.50,
+      enabled: true
+    }
+
+  ];
 
   /* =======================================================
      REPORT STORE
