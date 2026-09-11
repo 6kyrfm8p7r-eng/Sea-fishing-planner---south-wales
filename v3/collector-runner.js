@@ -149,6 +149,31 @@ async function runCollector() {
       }
     );
 
+  const sourceCandidates =
+    recentBassReports.map(
+      report => ({
+
+        sourceId:
+          "web-fishing-in-wales",
+
+        sourceUrl:
+          fishingInWales.sourceUrl,
+
+        species:
+          "bass",
+
+        date:
+          report.reportDate,
+
+        heading:
+          report.heading,
+
+        notes:
+          report.bassText.join(" ")
+
+      })
+    );
+  
   console.log(
     `Parsed Fishing in Wales reports: ${parsedReports.length}`
   );
@@ -161,6 +186,10 @@ async function runCollector() {
     `Bass reports within 30 days: ${recentBassReports.length}`
   );
 
+  console.log(
+    `Fishing in Wales source candidates: ${sourceCandidates.length}`
+  );
+  
   console.log(
     "First bass reports:",
     bassReports
