@@ -62,17 +62,19 @@ async function runCollector() {
     `Stored reports: ${normalisedReports.length}`
   );
 
-  console.log(
+    console.log(
     `Last successful scan: ${
       scanState.lastSuccessfulScanAt || "never"
-    const fishingInWales =
+    }`
+  );
+
+
+  const fishingInWales =
     await fetchFishingInWales();
 
 
   console.log(
     `Fishing in Wales fetched: ${fishingInWales.html.length} characters`
-  );
-    }`
   );
 
 }
