@@ -283,6 +283,176 @@ async function runCollector() {
         })
       )
   );
+
+  /* =======================================================
+     HISTORICAL LOCATION-MAPPER AUDIT
+
+     Diagnostic only.
+     This does NOT feed Bass Activity and does NOT write data.
+     ======================================================= */
+
+  const historicalSourceCandidates =
+    bassReports
+      .flatMap(
+        report =>
+          report.bassText.flatMap(
+            text =>
+              splitEvidenceSentences(text)
+                .filter(
+                  sentence =>
+                    classifyBassEvidence(sentence) ===
+                    "SHORE_CATCH"
+                )
+                .map(
+                  sentence => ({
+
+                    sourceId:
+                      "web-fishing-in-wales",
+
+                    sourceUrl:
+                      fishingInWales.sourceUrl,
+
+                    species:
+                      "bass",
+
+                    date:
+                      report.reportDate,
+
+                    heading:
+                      report.heading,
+
+                    notes:
+                      sentence
+
+                  })
+                )
+          )
+      );
+
+
+  const historicalMappedCandidates =
+    mapCatchLocations(
+      historicalSourceCandidates
+    );
+
+
+  const historicalMapped =
+    historicalMappedCandidates.filter(
+      candidate =>
+        candidate.locationStatus ===
+        "MAPPED"
+    );
+
+
+  const historicalUnmapped =
+    historicalMappedCandidates.filter(
+      candidate =>
+        candidate.locationStatus ===
+        "UNMAPPED"
+    );
+
+
+  const historicalAmbiguous =
+    historicalMappedCandidates.filter(
+      candidate =>
+        candidate.locationStatus ===
+        "AMBIGUOUS"
+    );
+
+
+  console.log(
+    "===== HISTORICAL LOCATION AUDIT ====="
+  );
+
+
+  console.log(
+    `Historical shore-catch candidates: ${historicalSourceCandidates.length}`
+  );
+
+
+  console.log(
+    `Historical mapped: ${historicalMapped.length}`
+  );
+
+
+  console.log(
+    `Historical unmapped: ${historicalUnmapped.length}`
+  );
+
+
+  console.log(
+    `Historical ambiguous: ${historicalAmbiguous.length}`
+  );
+
+
+  console.log(
+    "Historical mapped samples:",
+    historicalMapped
+      .slice(0, 40)
+      .map(
+        candidate => ({
+
+          date:
+            candidate.date,
+
+          heading:
+            candidate.heading,
+
+          markId:
+            candidate.markId,
+
+          matched:
+            candidate.locationMatch,
+
+          notes:
+            candidate.notes
+
+        })
+      )
+  );
+
+
+  console.log(
+    "Historical unmapped samples:",
+    historicalUnmapped
+      .slice(0, 40)
+      .map(
+        candidate => ({
+
+          date:
+            candidate.date,
+
+          heading:
+            candidate.heading,
+
+          notes:
+            candidate.notes
+
+        })
+      )
+  );
+
+
+  console.log(
+    "Historical ambiguous samples:",
+    historicalAmbiguous
+      .slice(0, 40)
+      .map(
+        candidate => ({
+
+          date:
+            candidate.date,
+
+          heading:
+            candidate.heading,
+
+          notes:
+            candidate.notes
+
+        })
+      )
+  );
+  
   console.log(
     `Parsed Fishing in Wales reports: ${parsedReports.length}`
   );
