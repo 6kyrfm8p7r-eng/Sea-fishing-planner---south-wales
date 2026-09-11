@@ -71,7 +71,7 @@
     maxPositiveAdjustment: 10,
 
     maxNegativeAdjustment: -10
-
+};
   /* =======================================================
      REPORT SOURCE REGISTRY
 
