@@ -784,6 +784,7 @@
     if (sameCatch) {
 
       const catchEventId =
+        candidate.catchEventId ||
         sameCatch.catchEventId ||
         (
           "catch-event-" +
