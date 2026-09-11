@@ -231,15 +231,50 @@
      REPORT STORE
 
      Future report example:
-
      {
        id: "report-001",
+
        markId: "ogmore",
        species: "bass",
        caught: true,
+
+       /*
+        Original catch/report time.
+       */
        date: "2026-09-10T18:30:00",
-       sourceType: "manual",
-       sourceName: "Verified angler report",
+
+       /*
+        Source identity.
+       */
+       sourceId: "fb-bass-lure-fishing-wales",
+       sourceType: "facebook",
+       sourceName: "Bass lure fishing wales",
+
+       /*
+        Stable post identity where available.
+        This is the strongest duplicate key.
+       */
+       externalPostId: "facebook-post-id",
+       sourceUrl: "https://example.com/post",
+
+       /*
+        Scanner timestamps.
+       */
+       firstSeenAt: "2026-09-11T06:00:00Z",
+       lastSeenAt: "2026-09-11T12:00:00Z",
+
+       /*
+        Generated fingerprint used when a stable
+        external post ID is unavailable.
+       */
+       fingerprint: "source-author-date-content-hash",
+
+       /*
+        Optional shared catch-event ID.
+        Multiple posts can point to the same catch.
+       */
+       catchEventId: "catch-ogmore-20260910-001",
+
        verified: true,
        notes: "One bass on lure"
      }
