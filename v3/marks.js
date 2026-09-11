@@ -873,7 +873,7 @@
       windMax: 300,
       note: "Highly exposed surf and reef.",
       reason: "Potentially excellent bass water, but one of the marks where safety must dominate."
-    }
+    },
     /* =====================================================
        ADDITIONAL SOUTH / SOUTH-WEST WALES MARKS
        ===================================================== */
