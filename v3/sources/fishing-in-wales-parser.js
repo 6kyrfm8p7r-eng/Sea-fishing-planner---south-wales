@@ -103,6 +103,64 @@ function extractBassText(sectionHtml) {
 
 }
 
+function classifyBassEvidence(text) {
+
+  const value =
+    String(text || "")
+      .toLowerCase();
+
+
+  const offshore =
+    /\b(kayak|charter|boat|afloat|offshore)\b/.test(
+      value
+    );
+
+
+  if (offshore) {
+
+    return "OFFSHORE";
+
+  }
+
+
+  const prediction =
+    /\b(anticipated|expect|expected|should|could|look forward|prospects)\b/.test(
+      value
+    );
+
+
+  if (prediction) {
+
+    return "PREDICTION";
+
+  }
+
+
+  const shoreContext =
+    /\b(shore|shores|beach|rocks|rock|pier|barrage)\b/.test(
+      value
+    );
+
+
+  const catchEvidence =
+    /\b(caught|catch|catches|producing|productive)\b/.test(
+      value
+    );
+
+
+  if (
+    shoreContext &&
+    catchEvidence
+  ) {
+
+    return "SHORE_CATCH";
+
+  }
+
+
+  return "GENERAL";
+
+}
 
 function parseFishingInWales(html) {
 
