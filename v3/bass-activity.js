@@ -502,6 +502,120 @@
     );
 
   }
+  function findSameCatchEvent(
+    candidate,
+    reports = REPORTS
+  ) {
+
+    return (
+      reports.find(
+        report =>
+          isSameCatchEvent(
+            candidate,
+            report
+          )
+      ) ||
+      null
+    );
+
+  }
+
+
+  function ingestReport(
+    candidate,
+    reports = REPORTS,
+    now = new Date()
+  ) {
+
+    if (!candidate) {
+
+      return {
+        action: "rejected",
+        reason: "missing-report",
+        report: null
+      };
+
+    }
+
+
+    const seenAt =
+      now instanceof Date
+        ? now.toISOString()
+        : new Date(now).toISOString();
+
+
+    const duplicate =
+      findDuplicateReport(
+        candidate,
+        reports
+      );
+
+
+    if (duplicate) {
+
+      duplicate.lastSeenAt =
+        seenAt;
+
+      return {
+        action: "updated-existing",
+        reason: "same-report",
+        report: duplicate
+      };
+
+    }
+
+
+    const sameCatch =
+      findSameCatchEvent(
+        candidate,
+        reports
+      );
+
+
+    const prepared = {
+      ...candidate,
+
+      firstSeenAt:
+        candidate.firstSeenAt ||
+        seenAt,
+
+      lastSeenAt:
+        seenAt
+    };
+
+
+    if (
+      sameCatch &&
+      !prepared.catchEventId
+    ) {
+
+      prepared.catchEventId =
+        sameCatch.catchEventId;
+
+    }
+
+
+    reports.push(
+      prepared
+    );
+
+
+    return {
+      action:
+        sameCatch
+          ? "added-corroboration"
+          : "added-new",
+
+      reason:
+        sameCatch
+          ? "same-catch-event"
+          : "new-report",
+
+      report:
+        prepared
+    };
+
+  }
   /* =======================================================
      REPORT VALIDATION
      ======================================================= */
