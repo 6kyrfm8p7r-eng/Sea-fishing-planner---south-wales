@@ -748,7 +748,6 @@
   /* =======================================================
      SOURCE QUALITY
      ======================================================= */
-
   function getSourceWeight(
     report
   ) {
@@ -772,6 +771,60 @@
 
     }
 
+
+    /*
+     Prefer the registered source relevance
+     whenever a sourceId is available.
+    */
+
+    const sourceId =
+      String(
+        report.sourceId || ""
+      )
+        .trim()
+        .toLowerCase();
+
+
+    if (sourceId) {
+
+      const registeredSource =
+        REPORT_SOURCES.find(
+          source =>
+            String(
+              source.id || ""
+            )
+              .trim()
+              .toLowerCase() ===
+            sourceId
+        );
+
+
+      if (
+        registeredSource &&
+        registeredSource.enabled !== false &&
+        Number.isFinite(
+          Number(
+            registeredSource.relevance
+          )
+        )
+      ) {
+
+        return clamp(
+          Number(
+            registeredSource.relevance
+          ),
+          0,
+          1
+        );
+
+      }
+
+    }
+
+
+    /*
+     Fallback for reports without a registered sourceId.
+    */
 
     const sourceType =
       String(
