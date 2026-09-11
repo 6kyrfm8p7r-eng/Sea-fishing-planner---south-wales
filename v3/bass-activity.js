@@ -352,7 +352,156 @@
 
   }
 
+  function normaliseIdentityValue(
+    value
+  ) {
 
+    return String(
+      value || ""
+    )
+      .trim()
+      .toLowerCase();
+
+  }
+
+
+  function reportIdentityKey(
+    report
+  ) {
+
+    if (!report) {
+
+      return null;
+
+    }
+
+
+    const sourceId =
+      normaliseIdentityValue(
+        report.sourceId ||
+        report.sourceName
+      );
+
+
+    const externalPostId =
+      normaliseIdentityValue(
+        report.externalPostId
+      );
+
+
+    if (
+      sourceId &&
+      externalPostId
+    ) {
+
+      return (
+        "external:" +
+        sourceId +
+        ":" +
+        externalPostId
+      );
+
+    }
+
+
+    const fingerprint =
+      normaliseIdentityValue(
+        report.fingerprint
+      );
+
+
+    if (fingerprint) {
+
+      return (
+        "fingerprint:" +
+        fingerprint
+      );
+
+    }
+
+
+    return null;
+
+  }
+
+
+  function isSameReport(
+    a,
+    b
+  ) {
+
+    if (!a || !b) {
+
+      return false;
+
+    }
+
+
+    const aKey =
+      reportIdentityKey(a);
+
+    const bKey =
+      reportIdentityKey(b);
+
+
+    return Boolean(
+      aKey &&
+      bKey &&
+      aKey === bKey
+    );
+
+  }
+
+
+  function isSameCatchEvent(
+    a,
+    b
+  ) {
+
+    if (!a || !b) {
+
+      return false;
+
+    }
+
+
+    const aEvent =
+      normaliseIdentityValue(
+        a.catchEventId
+      );
+
+    const bEvent =
+      normaliseIdentityValue(
+        b.catchEventId
+      );
+
+
+    return Boolean(
+      aEvent &&
+      bEvent &&
+      aEvent === bEvent
+    );
+
+  }
+
+
+  function findDuplicateReport(
+    candidate,
+    reports = REPORTS
+  ) {
+
+    return (
+      reports.find(
+        report =>
+          isSameReport(
+            candidate,
+            report
+          )
+      ) ||
+      null
+    );
+
+  }
   /* =======================================================
      REPORT VALIDATION
      ======================================================= */
