@@ -1487,38 +1487,6 @@ const confidence =
 
 </div>
 
-
-            <div class="component">
-
-              <small>
-                BEST SAFE HOUR
-              </small>
-
-              <strong>
-                ${formatTime(
-                  opportunity
-                    .bestHour
-                    ?.time
-                )}
-              </strong>
-
-            </div>
-
-
-            <div class="component">
-
-              <small>
-                LEAVE BY
-              </small>
-
-              <strong>
-                ${formatTime(
-                  departure
-                )}
-              </strong>
-
-            </div>
-
           </div>
 
 
