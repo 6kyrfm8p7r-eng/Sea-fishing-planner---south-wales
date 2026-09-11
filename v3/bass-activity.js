@@ -590,12 +590,26 @@
             " "
           )
           .split(/\s+/)
-          .map(
+                   .map(
             word =>
               word.replace(
                 /[^\p{L}\p{N}]+/gu,
                 ""
               )
+          )
+          .map(
+            word =>
+              (
+                word.length >= 5 &&
+                word.endsWith("s") &&
+                !word.endsWith("ss") &&
+                !word.endsWith("us") &&
+                !word.endsWith("is") &&
+                !word.endsWith("ies")
+              )
+                ? word.slice(0, -1)
+                : word
+          )
           )
                     .filter(
             word =>
@@ -614,12 +628,26 @@
             " "
           )
           .split(/\s+/)
-          .map(
+                    .map(
             word =>
               word.replace(
                 /[^\p{L}\p{N}]+/gu,
                 ""
               )
+          )
+          .map(
+            word =>
+              (
+                word.length >= 5 &&
+                word.endsWith("s") &&
+                !word.endsWith("ss") &&
+                !word.endsWith("us") &&
+                !word.endsWith("is") &&
+                !word.endsWith("ies")
+              )
+                ? word.slice(0, -1)
+                : word
+          )
           )
                     .filter(
             word =>
