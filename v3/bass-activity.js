@@ -570,11 +570,55 @@
       );
 
 
-    const sameNotes =
+    const aWords =
+      new Set(
+        aNotes
+          .split(/\s+/)
+          .filter(
+            word =>
+              word.length >= 4
+          )
+      );
+
+    const bWords =
+      new Set(
+        bNotes
+          .split(/\s+/)
+          .filter(
+            word =>
+              word.length >= 4
+          )
+      );
+
+
+    const sharedWordCount =
+      Array.from(
+        aWords
+      )
+        .filter(
+          word =>
+            bWords.has(
+              word
+            )
+        )
+        .length;
+
+
+    const notesSimilar =
       Boolean(
         aNotes &&
         bNotes &&
-        aNotes === bNotes
+        (
+          aNotes === bNotes ||
+          (
+            sharedWordCount >= 3 &&
+            sharedWordCount /
+              Math.min(
+                aWords.size,
+                bWords.size
+              ) >= 0.6
+          )
+        )
       );
 
 
