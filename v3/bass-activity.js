@@ -610,7 +610,7 @@
                 ? word.slice(0, -1)
                 : word
           )
-          )
+      
                     .filter(
             word =>
               word.length >= 4 &&
@@ -648,7 +648,7 @@
                 ? word.slice(0, -1)
                 : word
           )
-          )
+      
                     .filter(
             word =>
               word.length >= 4 &&
