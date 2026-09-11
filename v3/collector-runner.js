@@ -468,7 +468,135 @@ async function runCollector() {
         "MAPPED"
     );
 
+  /* =======================================================
+     HISTORICAL CONVERSION TEST
 
+     Diagnostic only.
+     Proves mapped catch evidence can be converted into
+     the Bass Activity report structure.
+
+     Historical reports NEVER enter the live 30-day feed.
+     Nothing is written to storage.
+     ======================================================= */
+
+  const historicalBassActivityCandidates =
+    historicalMapped
+      .map(
+        candidate => {
+
+          const fingerprint =
+            [
+              candidate.sourceId,
+              candidate.date,
+              candidate.markId,
+              candidate.notes
+            ]
+              .map(
+                value =>
+                  String(value || "")
+                    .trim()
+                    .toLowerCase()
+                    .replace(/\s+/g, " ")
+              )
+              .join("|");
+
+
+          return (
+            CollectorContract
+              .normaliseCollectorReport({
+                id: null,
+
+                markId:
+                  candidate.markId,
+
+                species:
+                  "bass",
+
+                caught:
+                  true,
+
+                date:
+                  candidate.date
+                    ? `${candidate.date}T00:00:00Z`
+                    : null,
+
+                sourceId:
+                  candidate.sourceId,
+
+                sourceType:
+                  "website",
+
+                sourceName:
+                  "Fishing in Wales",
+
+                externalPostId:
+                  null,
+
+                sourceUrl:
+                  candidate.sourceUrl,
+
+                fingerprint,
+
+                catchEventId:
+                  null,
+
+                verified:
+                  false,
+
+                notes:
+                  candidate.notes
+              })
+          );
+
+        }
+      )
+      .filter(Boolean);
+
+
+  console.log(
+    `Historical Bass Activity conversion test: ${historicalBassActivityCandidates.length}`
+  );
+
+
+  console.log(
+    "Historical Bass Activity converted samples:",
+    historicalBassActivityCandidates
+      .slice(0, 20)
+      .map(
+        report => ({
+          markId:
+            report.markId,
+
+          species:
+            report.species,
+
+          caught:
+            report.caught,
+
+          date:
+            report.date,
+
+          sourceId:
+            report.sourceId,
+
+          sourceType:
+            report.sourceType,
+
+          sourceName:
+            report.sourceName,
+
+          fingerprint:
+            report.fingerprint,
+
+          verified:
+            report.verified,
+
+          notes:
+            report.notes
+        })
+      )
+  );
+  
   const historicalUnmapped =
     historicalMappedCandidates.filter(
       candidate =>
