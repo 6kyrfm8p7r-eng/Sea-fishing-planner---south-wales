@@ -1182,11 +1182,54 @@
     now = new Date()
   ) {
 
-    const reports =
+     const reports =
       getReportsForMark(
         markOrId,
         now
-      );
+      )
+        .filter(
+          (
+            report,
+            index,
+            allReports
+          ) => {
+
+            const eventId =
+              normaliseIdentityValue(
+                report.catchEventId
+              );
+
+
+            /*
+             Reports without a grouped catch event
+             remain independent evidence.
+            */
+
+            if (!eventId) {
+
+              return true;
+
+            }
+
+
+            /*
+             For a grouped catch event, keep only
+             the first report in the date-sorted list.
+            */
+
+            return (
+              allReports.findIndex(
+                candidate =>
+                  normaliseIdentityValue(
+                    candidate.catchEventId
+                  ) ===
+                  eventId
+              ) ===
+              index
+            );
+
+          }
+        );
 
 
     if (!reports.length) {
