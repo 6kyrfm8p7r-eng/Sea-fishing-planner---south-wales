@@ -252,6 +252,7 @@ module.exports = {
   cleanText,
   parseReportDate,
   extractBassText,
+  classifyBassEvidence,
   parseFishingInWales
 
 };
