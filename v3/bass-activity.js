@@ -795,6 +795,20 @@
 
     if (sameCatch) {
 
+      const sameCatchDate =
+        new Date(
+          sameCatch.date
+        );
+
+
+      const sameCatchTimestamp =
+        Number.isNaN(
+          sameCatchDate.getTime()
+        )
+          ? seenAt
+          : sameCatchDate.getTime();
+
+
       const catchEventId =
         candidate.catchEventId ||
         sameCatch.catchEventId ||
@@ -810,9 +824,7 @@
                 sameCatch.markId
               ) +
               "-" +
-              new Date(
-                sameCatch.date
-              ).getTime()
+              sameCatchTimestamp
             )
           )
         );
