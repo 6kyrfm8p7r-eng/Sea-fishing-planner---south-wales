@@ -200,6 +200,49 @@ const BassActivity =
 
   }
 
+     function compassDirection(degrees) {
+
+    const value =
+      Number(degrees);
+
+    if (!Number.isFinite(value)) {
+      return "—";
+    }
+
+    const directions = [
+      "N", "NNE", "NE", "ENE",
+      "E", "ESE", "SE", "SSE",
+      "S", "SSW", "SW", "WSW",
+      "W", "WNW", "NW", "NNW"
+    ];
+
+    const index =
+      Math.round(
+        ((value % 360) + 360) % 360 / 22.5
+      ) % 16;
+
+    return directions[index];
+
+  }
+
+
+  function formatWind(hour) {
+
+    const speed =
+      Number(hour?.windSpeed);
+
+    const direction =
+      compassDirection(
+        hour?.windDirection
+      );
+
+    if (!Number.isFinite(speed)) {
+      return "—";
+    }
+
+    return `${direction} ${Math.round(speed)} mph`;
+
+  }
 
   function safetyClass(level) {
 
@@ -614,21 +657,19 @@ const opportunityScore =
           </div>
 
 
-          <div class="metric-box">
+                  <div class="metric-box">
 
             <div class="metric-icon">
-              ◷
+              ↗
             </div>
 
             <div class="metric-label">
-              BEST SAFE HOUR
+              WIND
             </div>
 
             <div class="metric-value">
-              ${formatTime(
-                opportunity
-                  .bestHour
-                  ?.time
+              ${formatWind(
+                opportunity.bestHour
               )}
             </div>
 
