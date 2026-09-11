@@ -476,10 +476,108 @@
       );
 
 
-    return Boolean(
+    if (
       aEvent &&
-      bEvent &&
-      aEvent === bEvent
+      bEvent
+    ) {
+
+      return (
+        aEvent ===
+        bEvent
+      );
+
+    }
+
+
+    /*
+     Conservative automatic cross-post match.
+
+     Require the same mark, species, catch result,
+     very similar report text and a timestamp within
+     six hours.
+
+     This avoids treating unrelated catches as the
+     same event merely because they occurred at the
+     same mark.
+    */
+
+    const sameMark =
+      normaliseIdentityValue(
+        a.markId
+      ) ===
+      normaliseIdentityValue(
+        b.markId
+      );
+
+
+    const sameSpecies =
+      normaliseIdentityValue(
+        a.species
+      ) ===
+      normaliseIdentityValue(
+        b.species
+      );
+
+
+    const sameCaughtState =
+      a.caught ===
+      b.caught;
+
+
+    const aNotes =
+      normaliseIdentityValue(
+        a.notes
+      );
+
+    const bNotes =
+      normaliseIdentityValue(
+        b.notes
+      );
+
+
+    const sameNotes =
+      Boolean(
+        aNotes &&
+        bNotes &&
+        aNotes === bNotes
+      );
+
+
+    const aDate =
+      new Date(
+        a.date
+      );
+
+    const bDate =
+      new Date(
+        b.date
+      );
+
+
+    const validDates =
+      !Number.isNaN(
+        aDate.getTime()
+      ) &&
+      !Number.isNaN(
+        bDate.getTime()
+      );
+
+
+    const withinSixHours =
+      validDates &&
+      Math.abs(
+        aDate.getTime() -
+        bDate.getTime()
+      ) <=
+      6 * 60 * 60 * 1000;
+
+
+    return Boolean(
+      sameMark &&
+      sameSpecies &&
+      sameCaughtState &&
+      sameNotes &&
+      withinSixHours
     );
 
   }
