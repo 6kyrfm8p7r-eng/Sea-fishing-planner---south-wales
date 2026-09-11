@@ -160,8 +160,8 @@ function classifyBassEvidence(text) {
     );
 
 
-  const catchEvidence =
-    /\b(caught|catch|catches|producing|productive)\b/.test(
+const catchEvidence =
+  /\b(caught|catch|catches|produced|producing|productive|landed|landing)\b/.test(
       value
     );
 
