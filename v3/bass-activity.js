@@ -604,19 +604,32 @@
         .length;
 
 
+    const smallerWordSetSize =
+      Math.min(
+        aWords.size,
+        bWords.size
+      );
+
+
+    const requiredSharedWords =
+      smallerWordSetSize >= 3
+        ? 3
+        : smallerWordSetSize;
+
+
     const notesSimilar =
       Boolean(
         aNotes &&
         bNotes &&
+        smallerWordSetSize > 0 &&
         (
           aNotes === bNotes ||
           (
-            sharedWordCount >= 3 &&
+            sharedWordCount >=
+              requiredSharedWords &&
             sharedWordCount /
-              Math.min(
-                aWords.size,
-                bWords.size
-              ) >= 0.6
+              smallerWordSetSize >=
+              0.6
           )
         )
       );
