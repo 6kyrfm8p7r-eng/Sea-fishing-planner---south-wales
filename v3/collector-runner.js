@@ -15,6 +15,7 @@ const DATA_DIR =
   path.join(__dirname, "data");
 const {
   parseFishingInWales,
+  splitEvidenceSentences,
   classifyBassEvidence
 } =
   require("./sources/fishing-in-wales-parser.js");
@@ -239,6 +240,33 @@ async function runCollector() {
   console.log(
     "Bass evidence samples:",
     classificationSamples
+  );
+
+  const sentenceSamples =
+    bassReports
+      .flatMap(
+        report =>
+          report.bassText.flatMap(
+            text =>
+              splitEvidenceSentences(text)
+                .map(
+                  sentence => ({
+
+                    classification:
+                      classifyBassEvidence(sentence),
+
+                    sentence
+
+                  })
+                )
+          )
+      )
+      .slice(0, 30);
+
+
+  console.log(
+    "Bass sentence samples:",
+    sentenceSamples
   );
   
   console.log(
