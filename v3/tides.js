@@ -88,9 +88,6 @@
 
   /* =======================================================
      OPTIONAL LIGHT SMOOTHING
-
-     Reduces tiny model fluctuations without shifting tide
-     times significantly.
      ======================================================= */
 
   function smoothSeaLevelSeries(
@@ -136,6 +133,7 @@
 
         return {
           ...point,
+
           smoothedSeaLevel:
             count
               ? total / count
@@ -147,361 +145,295 @@
 
   }
 
-/* =======================================================
-   TURNING-POINT INTERPOLATION
 
-   The Open-Meteo sea-level series is normally sampled
-   every 15 minutes.
+  /* =======================================================
+     TURNING-POINT INTERPOLATION
+     ======================================================= */
 
-   A real high or low water can occur between those samples.
-
-   We use the level immediately before, at, and after the
-   detected turning point to estimate the mathematical peak
-   or trough between them.
-
-   This improves OUR timing resolution without pretending
-   that the underlying model is an official tide table.
-   ======================================================= */
-
-function interpolateTurningPoint(
-  previous,
-  current,
-  next,
-  previousLevel,
-  currentLevel,
-  nextLevel
-) {
-
-  const previousTime =
-    toTime(
-      previous?.time
-    );
-
-  const currentTime =
-    toTime(
-      current?.time
-    );
-
-  const nextTime =
-    toTime(
-      next?.time
-    );
-
-
-  if (
-    !previousTime ||
-    !currentTime ||
-    !nextTime
+  function interpolateTurningPoint(
+    previous,
+    current,
+    next,
+    previousLevel,
+    currentLevel,
+    nextLevel
   ) {
 
-    return {
-      time: current.time,
-      date: current.date,
-      offsetMinutes: 0
-    };
-
-  }
-
-
-  /*
-   Parabolic interpolation.
-
-   For three equally spaced samples:
-
-               y(-1), y(0), y(+1)
-
-   the vertex offset from the centre sample is:
-
-       0.5 × (y(-1) - y(+1))
-       ---------------------
-       y(-1) - 2y(0) + y(+1)
-
-   An offset of:
-      -1 = previous sample
-       0 = centre sample
-      +1 = next sample
-  */
-
-  const denominator =
-    previousLevel -
-    (2 * currentLevel) +
-    nextLevel;
-
-
-  if (
-    !Number.isFinite(denominator) ||
-    Math.abs(denominator) <
-      0.0000001
-  ) {
-
-    return {
-      time: current.time,
-      date: current.date,
-      offsetMinutes: 0
-    };
-
-  }
-
-
-  let offset =
-    0.5 *
-    (
-      previousLevel -
-      nextLevel
-    ) /
-    denominator;
-
-
-  /*
-   Defensive clamp.
-
-   We detected the centre point as the turning point,
-   so the refined vertex should remain between its
-   neighbouring samples.
-  */
-
-  offset =
-    Math.max(
-      -1,
-      Math.min(
-        1,
-        offset
-      )
-    );
-
-
-  /*
-   Calculate representative spacing.
-
-   This also allows the same interpolation to work if
-   we fall back to hourly sea-level data.
-  */
-
-  const previousSpacing =
-    currentTime.getTime() -
-    previousTime.getTime();
-
-
-  const nextSpacing =
-    nextTime.getTime() -
-    currentTime.getTime();
-
-
-  const sampleSpacing =
-    (
-      previousSpacing +
-      nextSpacing
-    ) /
-    2;
-
-
-  if (
-    !Number.isFinite(sampleSpacing) ||
-    sampleSpacing <= 0
-  ) {
-
-    return {
-      time: current.time,
-      date: current.date,
-      offsetMinutes: 0
-    };
-
-  }
-
-
-  const refinedDate =
-    new Date(
-      currentTime.getTime() +
-      (
-        offset *
-        sampleSpacing
-      )
-    );
-
-
-  const offsetMinutes =
-    (
-      refinedDate.getTime() -
-      currentTime.getTime()
-    ) /
-    60000;
-
-
-  return {
-
-    /*
-     Keep the same local-style timestamp format already
-     used throughout the app.
-
-     We use the Date object itself internally, while the
-     ISO-style string remains compatible with the rest
-     of the tide engine.
-    */
-
-    time:
-      refinedDate,
-
-    date:
-      refinedDate,
-
-    offsetMinutes
-
-  };
-
-}
-
-
-/* =======================================================
-   RAW TURNING POINT DETECTION
-   ======================================================= */
-
-function detectTurningPoints(points) {
-
-  const series =
-    smoothSeaLevelSeries(
-      points,
-      1
-    );
-
-
-  if (
-    series.length <
-    3
-  ) {
-
-    return [];
-
-  }
-
-
-  const events = [];
-
-
-  for (
-    let i = 1;
-    i < series.length - 1;
-    i++
-  ) {
-
-    const previous =
-      series[i - 1];
-
-    const current =
-      series[i];
-
-    const next =
-      series[i + 1];
-
-
-    const previousLevel =
-      previous.smoothedSeaLevel ??
-      previous.seaLevel;
-
-
-    const currentLevel =
-      current.smoothedSeaLevel ??
-      current.seaLevel;
-
-
-    const nextLevel =
-      next.smoothedSeaLevel ??
-      next.seaLevel;
-
-
-    const isHigh =
-      currentLevel >=
-        previousLevel &&
-      currentLevel >
-        nextLevel;
-
-
-    const isLow =
-      currentLevel <=
-        previousLevel &&
-      currentLevel <
-        nextLevel;
+    const previousTime =
+      toTime(
+        previous?.time
+      );
+
+    const currentTime =
+      toTime(
+        current?.time
+      );
+
+    const nextTime =
+      toTime(
+        next?.time
+      );
 
 
     if (
-      !isHigh &&
-      !isLow
+      !previousTime ||
+      !currentTime ||
+      !nextTime
     ) {
 
-      continue;
+      return {
+        time: current.time,
+        date: current.date,
+        offsetMinutes: 0
+      };
 
     }
 
 
-    const refined =
-      interpolateTurningPoint(
+    const denominator =
+      previousLevel -
+      (2 * currentLevel) +
+      nextLevel;
 
-        previous,
 
-        current,
+    if (
+      !Number.isFinite(denominator) ||
+      Math.abs(denominator) <
+        0.0000001
+    ) {
 
-        next,
+      return {
+        time: current.time,
+        date: current.date,
+        offsetMinutes: 0
+      };
 
-        previousLevel,
+    }
 
-        currentLevel,
 
+    let offset =
+      0.5 *
+      (
+        previousLevel -
         nextLevel
+      ) /
+      denominator;
 
+
+    offset =
+      Math.max(
+        -1,
+        Math.min(
+          1,
+          offset
+        )
       );
 
 
-    events.push({
+    const previousSpacing =
+      currentTime.getTime() -
+      previousTime.getTime();
 
-      type:
-        isHigh
-          ? "high"
-          : "low",
 
-      /*
-       Refined model-derived turning point.
-      */
+    const nextSpacing =
+      nextTime.getTime() -
+      currentTime.getTime();
+
+
+    const sampleSpacing =
+      (
+        previousSpacing +
+        nextSpacing
+      ) /
+      2;
+
+
+    if (
+      !Number.isFinite(sampleSpacing) ||
+      sampleSpacing <= 0
+    ) {
+
+      return {
+        time: current.time,
+        date: current.date,
+        offsetMinutes: 0
+      };
+
+    }
+
+
+    const refinedDate =
+      new Date(
+        currentTime.getTime() +
+        (
+          offset *
+          sampleSpacing
+        )
+      );
+
+
+    const offsetMinutes =
+      (
+        refinedDate.getTime() -
+        currentTime.getTime()
+      ) /
+      60000;
+
+
+    return {
 
       time:
-        refined.time,
+        refinedDate,
 
       date:
-        refined.date,
+        refinedDate,
 
-      /*
-       Raw centre sample retained for diagnostics.
-      */
+      offsetMinutes
 
-      rawTime:
-        current.time,
-
-      timingAdjustmentMinutes:
-        refined.offsetMinutes,
-
-      seaLevel:
-        current.seaLevel,
-
-      smoothedSeaLevel:
-        currentLevel,
-
-      source:
-        "Open-Meteo sea level model — interpolated estimate"
-
-    });
+    };
 
   }
 
 
-  return events;
+  /* =======================================================
+     RAW TURNING POINT DETECTION
+     ======================================================= */
 
-}
+  function detectTurningPoints(points) {
 
+    const series =
+      smoothSeaLevelSeries(
+        points,
+        1
+      );
+
+
+    if (
+      series.length <
+      3
+    ) {
+
+      return [];
+
+    }
+
+
+    const events = [];
+
+
+    for (
+      let i = 1;
+      i < series.length - 1;
+      i++
+    ) {
+
+      const previous =
+        series[i - 1];
+
+      const current =
+        series[i];
+
+      const next =
+        series[i + 1];
+
+
+      const previousLevel =
+        previous.smoothedSeaLevel ??
+        previous.seaLevel;
+
+
+      const currentLevel =
+        current.smoothedSeaLevel ??
+        current.seaLevel;
+
+
+      const nextLevel =
+        next.smoothedSeaLevel ??
+        next.seaLevel;
+
+
+      const isHigh =
+        currentLevel >=
+          previousLevel &&
+        currentLevel >
+          nextLevel;
+
+
+      const isLow =
+        currentLevel <=
+          previousLevel &&
+        currentLevel <
+          nextLevel;
+
+
+      if (
+        !isHigh &&
+        !isLow
+      ) {
+
+        continue;
+
+      }
+
+
+      const refined =
+        interpolateTurningPoint(
+
+          previous,
+
+          current,
+
+          next,
+
+          previousLevel,
+
+          currentLevel,
+
+          nextLevel
+
+        );
+
+
+      events.push({
+
+        type:
+          isHigh
+            ? "high"
+            : "low",
+
+        time:
+          refined.time,
+
+        date:
+          refined.date,
+
+        rawTime:
+          current.time,
+
+        timingAdjustmentMinutes:
+          refined.offsetMinutes,
+
+        seaLevel:
+          current.seaLevel,
+
+        smoothedSeaLevel:
+          currentLevel,
+
+        source:
+          "Open-Meteo sea level model — interpolated estimate"
+
+      });
+
+    }
+
+
+    return events;
+
+  }
 
 
   /* =======================================================
      REMOVE FALSE / DUPLICATE EVENTS
-
-     Real high/low waters should be several hours apart.
-     This collapses tiny nearby fluctuations.
      ======================================================= */
 
   function deduplicateEvents(
@@ -513,6 +445,7 @@ function detectTurningPoints(points) {
       return [];
     }
 
+
     const sorted =
       [...events].sort(
         (a, b) =>
@@ -520,14 +453,19 @@ function detectTurningPoints(points) {
           new Date(b.time)
       );
 
+
     const result = [];
 
-    for (const event of sorted) {
+
+    for (
+      const event of sorted
+    ) {
 
       const previous =
         result[
           result.length - 1
         ];
+
 
       if (!previous) {
 
@@ -555,11 +493,6 @@ function detectTurningPoints(points) {
       }
 
 
-      /*
-       If two nearby candidates are the same tide type,
-       keep the more extreme one.
-      */
-
       if (
         previous.type ===
         event.type
@@ -582,17 +515,10 @@ function detectTurningPoints(points) {
 
         }
 
-        continue;
-
       }
 
-
-      /*
-       Opposite tide types occurring unrealistically close
-       together are treated as model noise.
-      */
-
     }
+
 
     return result;
 
@@ -609,14 +535,19 @@ function detectTurningPoints(points) {
       return [];
     }
 
+
     const result = [];
 
-    for (const event of events) {
+
+    for (
+      const event of events
+    ) {
 
       const previous =
         result[
           result.length - 1
         ];
+
 
       if (!previous) {
 
@@ -637,11 +568,6 @@ function detectTurningPoints(points) {
       }
 
 
-      /*
-       Same type twice in a row:
-       retain the stronger extreme.
-      */
-
       const replace =
 
         event.type === "high"
@@ -661,6 +587,7 @@ function detectTurningPoints(points) {
 
     }
 
+
     return result;
 
   }
@@ -677,11 +604,13 @@ function detectTurningPoints(points) {
         points
       );
 
+
     const deduplicated =
       deduplicateEvents(
         raw,
         4
       );
+
 
     return enforceAlternation(
       deduplicated
@@ -706,6 +635,7 @@ function detectTurningPoints(points) {
     const endDate =
       toTime(end);
 
+
     if (
       !startDate ||
       !endDate
@@ -713,11 +643,13 @@ function detectTurningPoints(points) {
       return [];
     }
 
+
     return events.filter(
       event => {
 
         const date =
           toTime(event.time);
+
 
         return (
           date &&
@@ -740,9 +672,11 @@ function detectTurningPoints(points) {
     const start =
       toTime(now);
 
+
     if (!start) {
       return [];
     }
+
 
     const end =
       new Date(
@@ -750,6 +684,7 @@ function detectTurningPoints(points) {
         numberOfHours *
         3600000
       );
+
 
     return eventsBetween(
       events,
@@ -768,15 +703,18 @@ function detectTurningPoints(points) {
     const target =
       toTime(date);
 
+
     if (!target) {
       return [];
     }
+
 
     return events.filter(
       event => {
 
         const current =
           toTime(event.time);
+
 
         return (
           current &&
@@ -806,277 +744,229 @@ function detectTurningPoints(points) {
 
   }
 
-/* =======================================================
-   LOCAL TIDE CALIBRATION LAYER
 
-   PURPOSE
-   -------
-   Open-Meteo provides the continuous sea-level curve.
+  /* =======================================================
+     LOCAL TIDE CALIBRATION LAYER
 
-   Our interpolation refines the turning point between
-   model samples.
+     No guessed offsets are applied.
+     ======================================================= */
 
-   This layer allows individual marks to receive a LOCAL
-   timing correction derived from an authoritative tidal
-   reference station.
+  const MARK_TIDE_CALIBRATIONS = {
 
-   IMPORTANT
-   ---------
-   No guessed offsets are applied here.
-
-   Until a mark has a verified calibration entry,
-   offsetMinutes remains zero and existing tide behaviour
-   is unchanged.
-   ======================================================= */
+  };
 
 
-/*
- Example future entry:
-
- aberthaw: {
-   stationId: "verified-reference-id",
-   stationName: "Verified reference station",
-   offsetMinutes: 12,
-   verified: true,
-   source: "UKHO"
- }
-
- Do NOT populate these from guesses.
-*/
-
-const MARK_TIDE_CALIBRATIONS = {
-
-};
-
-
-function getTideCalibration(
-  markOrId
-) {
-
-  let id = "";
-
-
-  if (
-    typeof markOrId === "string"
+  function getTideCalibration(
+    markOrId
   ) {
 
-    id =
-      markOrId;
-
-  }
-  else if (
-    markOrId &&
-    typeof markOrId === "object"
-  ) {
-
-    id =
-      markOrId.id || "";
-
-  }
+    let id = "";
 
 
-  const calibration =
-    id
-      ? MARK_TIDE_CALIBRATIONS[id]
-      : null;
+    if (
+      typeof markOrId ===
+      "string"
+    ) {
+
+      id =
+        markOrId;
+
+    }
+    else if (
+      markOrId &&
+      typeof markOrId ===
+        "object"
+    ) {
+
+      id =
+        markOrId.id || "";
+
+    }
 
 
-  /*
-   Only verified calibration data is permitted to
-   alter tide timing.
-  */
+    const calibration =
+      id
+        ? MARK_TIDE_CALIBRATIONS[id]
+        : null;
 
-  if (
-    !calibration ||
-    calibration.verified !== true ||
-    !Number.isFinite(
-      Number(
-        calibration.offsetMinutes
+
+    if (
+      !calibration ||
+      calibration.verified !== true ||
+      !Number.isFinite(
+        Number(
+          calibration.offsetMinutes
+        )
       )
-    )
-  ) {
+    ) {
+
+      return {
+
+        stationId:
+          null,
+
+        stationName:
+          null,
+
+        offsetMinutes:
+          0,
+
+        verified:
+          false,
+
+        source:
+          null
+
+      };
+
+    }
+
 
     return {
 
       stationId:
+        calibration.stationId ||
         null,
 
       stationName:
+        calibration.stationName ||
         null,
 
       offsetMinutes:
-        0,
+        Number(
+          calibration.offsetMinutes
+        ),
 
       verified:
-        false,
+        true,
 
       source:
-        null
+        calibration.source ||
+        "Verified tide reference"
 
     };
 
   }
 
 
-  return {
-
-    stationId:
-      calibration.stationId ||
-      null,
-
-    stationName:
-      calibration.stationName ||
-      null,
-
-    offsetMinutes:
-      Number(
-        calibration.offsetMinutes
-      ),
-
-    verified:
-      true,
-
-    source:
-      calibration.source ||
-      "Verified tide reference"
-
-  };
-
-}
-
-
-function calibrateTideEvent(
-  event,
-  markOrId
-) {
-
-  if (!event) {
-
-    return null;
-
-  }
-
-
-  const calibration =
-    getTideCalibration(
-      markOrId
-    );
-
-
-  /*
-   Preserve the original model-derived event even
-   when there is no verified calibration.
-  */
-
-  if (
-    !calibration.verified ||
-    calibration.offsetMinutes === 0
+  function calibrateTideEvent(
+    event,
+    markOrId
   ) {
 
+    if (!event) {
+      return null;
+    }
+
+
+    const calibration =
+      getTideCalibration(
+        markOrId
+      );
+
+
+    if (
+      !calibration.verified ||
+      calibration.offsetMinutes ===
+        0
+    ) {
+
+      return {
+
+        ...event,
+
+        modelTime:
+          event.time,
+
+        calibrationMinutes:
+          0,
+
+        calibrated:
+          false,
+
+        calibrationSource:
+          null,
+
+        referenceStationId:
+          null,
+
+        referenceStationName:
+          null
+
+      };
+
+    }
+
+
+    const original =
+      toTime(
+        event.time
+      );
+
+
+    if (!original) {
+
+      return {
+
+        ...event,
+
+        modelTime:
+          event.time,
+
+        calibrationMinutes:
+          0,
+
+        calibrated:
+          false
+
+      };
+
+    }
+
+
+    const calibratedDate =
+      new Date(
+        original.getTime() +
+        (
+          calibration.offsetMinutes *
+          60000
+        )
+      );
+
+
     return {
 
       ...event,
+
+      time:
+        calibratedDate,
+
+      date:
+        calibratedDate,
 
       modelTime:
         event.time,
 
       calibrationMinutes:
-        0,
+        calibration.offsetMinutes,
 
       calibrated:
-        false,
+        true,
 
       calibrationSource:
-        null,
+        calibration.source,
 
       referenceStationId:
-        null,
+        calibration.stationId,
 
       referenceStationName:
-        null
+        calibration.stationName
 
     };
 
   }
 
 
-  const original =
-    toTime(
-      event.time
-    );
-
-
-  if (!original) {
-
-    return {
-
-      ...event,
-
-      modelTime:
-        event.time,
-
-      calibrationMinutes:
-        0,
-
-      calibrated:
-        false
-
-    };
-
-  }
-
-
-  const calibratedDate =
-    new Date(
-      original.getTime() +
-      (
-        calibration.offsetMinutes *
-        60000
-      )
-    );
-
-
-  return {
-
-    ...event,
-
-    /*
-     Final tide time used by Fishing DNA.
-    */
-
-    time:
-      calibratedDate,
-
-    date:
-      calibratedDate,
-
-
-    /*
-     Preserve the interpolated model time for
-     diagnostics and later validation.
-    */
-
-    modelTime:
-      event.time,
-
-    calibrationMinutes:
-      calibration.offsetMinutes,
-
-    calibrated:
-      true,
-
-    calibrationSource:
-      calibration.source,
-
-    referenceStationId:
-      calibration.stationId,
-
-    referenceStationName:
-      calibration.stationName
-
-  };
-
-}
   /* =======================================================
      FISHING DNA EVENT SELECTION
      ======================================================= */
@@ -1088,14 +978,17 @@ function calibrateTideEvent(
     const Profiles =
       window.SeaPlannerProfiles;
 
+
     if (!Profiles) {
       return "low";
     }
+
 
     const profile =
       Profiles.get(
         markOrId
       );
+
 
     return (
       profile?.tideReference ||
@@ -1114,8 +1007,10 @@ function calibrateTideEvent(
       return null;
     }
 
+
     const Profiles =
       window.SeaPlannerProfiles;
+
 
     if (
       !Profiles ||
@@ -1124,7 +1019,9 @@ function calibrateTideEvent(
     ) {
 
       return null;
+
     }
+
 
     return Profiles.getPrimeWindow(
       event.time,
@@ -1136,226 +1033,196 @@ function calibrateTideEvent(
 
   /* =======================================================
      FIND NEXT USABLE PRIME WINDOW
-
-     Important:
-     This does NOT just select the next tide event.
-
-     It selects the first Fishing DNA window whose END
-     has not already passed.
-
-     This fixes the old V2 bug where a nearly-finished
-     or already-finished prime window could be selected.
      ======================================================= */
-function findNextPrimeWindow(
-  events,
-  markOrId,
-  now = new Date()
-) {
 
-  const currentTime =
-    toTime(now);
+  function findNextPrimeWindow(
+    events,
+    markOrId,
+    now = new Date()
+  ) {
+
+    const currentTime =
+      toTime(now);
 
 
-  if (!currentTime) {
+    if (!currentTime) {
+      return null;
+    }
+
+
+    const tideType =
+      getRelevantTideType(
+        markOrId
+      );
+
+
+    const candidates =
+      eventsByType(
+        events,
+        tideType
+      );
+
+
+    for (
+      const rawEvent of candidates
+    ) {
+
+      const event =
+        calibrateTideEvent(
+          rawEvent,
+          markOrId
+        );
+
+
+      const window =
+        getPrimeWindowForEvent(
+          event,
+          markOrId
+        );
+
+
+      if (!window) {
+        continue;
+      }
+
+
+      if (
+        window.end <
+        currentTime
+      ) {
+        continue;
+      }
+
+
+      const status =
+
+        window.start >
+        currentTime
+
+          ? "upcoming"
+          : "active";
+
+
+      return {
+
+        event,
+
+        window,
+
+        status,
+
+        isActive:
+          status ===
+          "active",
+
+        isUpcoming:
+          status ===
+          "upcoming"
+
+      };
+
+    }
+
 
     return null;
 
   }
 
 
-  const tideType =
-    getRelevantTideType(
-      markOrId
-    );
+  /* =======================================================
+     PRIME WINDOWS WITHIN A PERIOD
+     ======================================================= */
 
-
-  const candidates =
-    eventsByType(
-      events,
-      tideType
-    );
-
-
-  for (
-    const rawEvent of candidates
+  function getPrimeWindowsBetween(
+    events,
+    markOrId,
+    start,
+    end
   ) {
 
-    /*
-     Apply a verified local correction if one exists.
+    const startDate =
+      toTime(start);
 
-     Otherwise this returns the same model-derived time.
-    */
-
-    const event =
-      calibrateTideEvent(
-        rawEvent,
-        markOrId
-      );
-
-
-    const window =
-      getPrimeWindowForEvent(
-        event,
-        markOrId
-      );
-
-
-    if (!window) {
-
-      continue;
-
-    }
+    const endDate =
+      toTime(end);
 
 
     if (
-      window.end <
-      currentTime
+      !startDate ||
+      !endDate
     ) {
-
-      continue;
-
+      return [];
     }
 
 
-    const status =
-
-      window.start >
-      currentTime
-
-        ? "upcoming"
-        : "active";
+    const tideType =
+      getRelevantTideType(
+        markOrId
+      );
 
 
-    return {
-
-      event,
-
-      window,
-
-      status,
-
-      isActive:
-        status ===
-        "active",
-
-      isUpcoming:
-        status ===
-        "upcoming"
-
-    };
-
-  }
-
-
-  return null;
-
-}
-
-
-  /* =======================================================
-     FIND PRIME WINDOWS WITHIN A FORECAST PERIOD
-     ======================================================= */
-function getPrimeWindowsBetween(
-  events,
-  markOrId,
-  start,
-  end
-) {
-
-  const startDate =
-    toTime(start);
-
-  const endDate =
-    toTime(end);
-
-
-  if (
-    !startDate ||
-    !endDate
-  ) {
-
-    return [];
-
-  }
-
-
-  const tideType =
-    getRelevantTideType(
-      markOrId
-    );
-
-
-  return eventsByType(
-    events,
-    tideType
-  )
-
-    .map(
-      rawEvent => {
-
-        /*
-         Apply verified local calibration before
-         constructing the Fishing DNA window.
-        */
-
-        const event =
-          calibrateTideEvent(
-            rawEvent,
-            markOrId
-          );
-
-
-        const window =
-          getPrimeWindowForEvent(
-            event,
-            markOrId
-          );
-
-
-        if (!window) {
-
-          return null;
-
-        }
-
-
-        const overlaps =
-
-          window.end >=
-            startDate &&
-
-          window.start <=
-            endDate;
-
-
-        if (!overlaps) {
-
-          return null;
-
-        }
-
-
-        return {
-
-          event,
-
-          window,
-
-          tideReference:
-            tideType
-
-        };
-
-      }
+    return eventsByType(
+      events,
+      tideType
     )
 
-    .filter(Boolean);
+      .map(
+        rawEvent => {
 
-}
+          const event =
+            calibrateTideEvent(
+              rawEvent,
+              markOrId
+            );
+
+
+          const window =
+            getPrimeWindowForEvent(
+              event,
+              markOrId
+            );
+
+
+          if (!window) {
+            return null;
+          }
+
+
+          const overlaps =
+
+            window.end >=
+              startDate &&
+
+            window.start <=
+              endDate;
+
+
+          if (!overlaps) {
+            return null;
+          }
+
+
+          return {
+
+            event,
+
+            window,
+
+            tideReference:
+              tideType
+
+          };
+
+        }
+      )
+
+      .filter(Boolean);
+
+  }
 
 
   /* =======================================================
-     DAILY HIGH / LOW TIDE HELPERS
+     DAILY HIGH / LOW HELPERS
      ======================================================= */
 
   function getDailyTides(
@@ -1368,6 +1235,7 @@ function getPrimeWindowsBetween(
         events,
         date
       );
+
 
     return {
 
@@ -1392,7 +1260,7 @@ function getPrimeWindowsBetween(
 
 
   /* =======================================================
-     BUILD TIDE DATA FROM FORECAST RESULT
+     BUILD TIDE DATA FROM FORECAST
      ======================================================= */
 
   function fromForecast(
@@ -1404,16 +1272,12 @@ function getPrimeWindowsBetween(
         ?.seaLevel15Minutes ||
       [];
 
+
     let events =
       detectTideEvents(
         seaLevel15
       );
 
-
-    /*
-     Fallback to hourly sea-level data if the 15-minute
-     series is unavailable.
-    */
 
     if (
       events.length < 2 &&
@@ -1424,6 +1288,7 @@ function getPrimeWindowsBetween(
 
       const hourlySeaLevel =
         forecastResult.hourly
+
           .filter(
             hour =>
               Number.isFinite(
@@ -1432,8 +1297,10 @@ function getPrimeWindowsBetween(
                 )
               )
           )
+
           .map(
             hour => ({
+
               time:
                 hour.time,
 
@@ -1441,6 +1308,7 @@ function getPrimeWindowsBetween(
                 Number(
                   hour.seaLevel
                 )
+
             })
           );
 
@@ -1507,6 +1375,10 @@ function getPrimeWindowsBetween(
     eventsForDate,
     eventsByType,
 
+    getTideCalibration,
+    calibrateTideEvent,
+    MARK_TIDE_CALIBRATIONS,
+
     getRelevantTideType,
     getPrimeWindowForEvent,
     findNextPrimeWindow,
@@ -1522,7 +1394,6 @@ function getPrimeWindowsBetween(
   console.log(
     "Sea Fishing Planner: tide engine ready."
   );
-getTideCalibration,
-calibrateTideEvent,
-MARK_TIDE_CALIBRATIONS,
+
+
 })();
