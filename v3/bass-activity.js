@@ -1470,12 +1470,35 @@
     }
 
 
-    const corroborationCount =
-      Math.max(
-        0,
-        eventSourcePairs.size -
-        groupedEventIds.size
-      );
+        let corroborationCount =
+      0;
+
+
+    for (
+      const eventId of
+      groupedEventIds
+    ) {
+
+      const sourceCount =
+        Array.from(
+          eventSourcePairs
+        )
+          .filter(
+            pair =>
+              pair.startsWith(
+                eventId + ":"
+              )
+          )
+          .length;
+
+
+      corroborationCount +=
+        Math.max(
+          0,
+          sourceCount - 1
+        );
+
+    }
 
 
     const corroborationBonus =
