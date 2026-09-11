@@ -282,9 +282,16 @@
      Keep this empty for now.
      ======================================================= */
 
-  const REPORTS = [
-
-  ];
+   const REPORTS =
+    Array.isArray(
+      window
+        .SeaPlannerBassReportData
+        ?.reports
+    )
+      ? window
+          .SeaPlannerBassReportData
+          .reports
+      : [];
 
 
   /* =======================================================
