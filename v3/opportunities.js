@@ -970,7 +970,6 @@
           ?.adjustment
       ) || 0;
 
-
     const adjustedBestScore =
       best.score === 100
         ? 100
@@ -983,6 +982,7 @@
 
 
     const adjustedWindowScore =
+ 
       safeAverage === null
         ? null
         : clamp(
