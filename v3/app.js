@@ -260,6 +260,43 @@ const BassActivity =
     return `${metres.toFixed(1)} m`;
 
   }
+
+  function formatTidalRangeFit(
+    preference
+  ) {
+
+    if (!preference) {
+      return "—";
+    }
+
+
+    const name =
+      String(
+        preference.preference ||
+        "neutral"
+      ).toUpperCase();
+
+
+    const adjustment =
+      Number(
+        preference.adjustment
+      );
+
+
+    if (!Number.isFinite(adjustment)) {
+      return name;
+    }
+
+
+    const signed =
+      adjustment > 0
+        ? `+${adjustment.toFixed(1)}`
+        : adjustment.toFixed(1);
+
+
+    return `${name} • ${signed}`;
+
+  }
    
   function safetyClass(level) {
 
@@ -760,10 +797,11 @@ const opportunityScore =
 
          </div>
         <div
+         <div
           class="tide-grid"
           style="
             margin-top:12px;
-            grid-template-columns:1fr;
+            grid-template-columns:1fr 1fr;
           "
         >
 
@@ -776,6 +814,22 @@ const opportunityScore =
             <div class="metric-value">
               ${formatTidalRange(
                 opportunity.tidalRange
+              )}
+            </div>
+
+          </div>
+
+
+          <div class="tide-box">
+
+            <div class="metric-label">
+              TIDAL RANGE FIT
+            </div>
+
+            <div class="metric-value">
+              ${formatTidalRangeFit(
+                opportunity
+                  .tidalRangePreference
               )}
             </div>
 
