@@ -419,82 +419,119 @@ function activityForOpportunity(
           TWO-STAGE ANALYSIS
         </div>
 
-        <div class="component-grid">
+<div class="component-grid">
 
-          <div class="component">
+  <div class="component">
 
-            <div class="icon">
-              1
-            </div>
+    <small>
+      FISHING SCORE
+    </small>
 
-            <small>
-              FIRST PASS
-            </small>
+    <strong>
+      ${score}/100
+    </strong>
 
-            <strong>
-              Coastal scan
-            </strong>
-
-          </div>
+  </div>
 
 
-          <div class="component">
+  <div class="component">
 
-            <div class="icon">
-              2
-            </div>
+    <small>
+      BASS ACTIVITY
+    </small>
 
-            <small>
-              FINALISTS
-            </small>
+    <strong>
+      ${
+        activity
+          ? `${formatScore(
+              activity.score
+            )}/100`
+          : "—"
+      }
+    </strong>
 
-            <strong>
-              Exact coordinates
-            </strong>
-
-          </div>
-
-
-          <div class="component">
-
-            <div class="icon">
-              ≈
-            </div>
-
-            <small>
-              MARINE
-            </small>
-
-            <strong>
-              Swell checked
-            </strong>
-
-          </div>
+  </div>
 
 
-          <div class="component">
+  <div class="component">
 
-            <div class="icon">
-              ⚠
-            </div>
+    <small>
+      OPPORTUNITY SCORE
+    </small>
 
-            <small>
-              SAFETY
-            </small>
+    <strong>
+      ${formatScore(
+        opportunityScore
+      )}/100
+    </strong>
 
-            <strong>
-              Independent
-            </strong>
+  </div>
 
-          </div>
 
-        </div>
+  <div class="component">
 
-      </section>
+    <small>
+      ACTIVITY CONFIDENCE
+    </small>
 
-    `;
+    <strong>
+      ${
+        activity
+          ? `${formatScore(
+              activity.confidence
+            )}/100`
+          : "—"
+      }
+    </strong>
 
-  }
+  </div>
+
+
+  <div class="component">
+
+    <small>
+      FORECAST CONFIDENCE
+    </small>
+
+    <strong>
+      ${confidence}/100
+    </strong>
+
+  </div>
+
+
+  <div class="component">
+
+    <small>
+      BEST SAFE HOUR
+    </small>
+
+    <strong>
+      ${formatTime(
+        opportunity
+          .bestHour
+          ?.time
+      )}
+    </strong>
+
+  </div>
+
+
+  <div class="component">
+
+    <small>
+      LEAVE BY
+    </small>
+
+    <strong>
+      ${formatTime(
+        departure
+      )}
+    </strong>
+
+  </div>
+
+</div>
 
 
   /* =======================================================
