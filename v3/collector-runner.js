@@ -6,7 +6,10 @@ const path = require("path");
 
 const CollectorContract =
   require("./collector-contract.js");
-
+const {
+  fetchFishingInWales
+} =
+  require("./sources/fishing-in-wales.js");
 
 const DATA_DIR =
   path.join(__dirname, "data");
@@ -27,7 +30,7 @@ function readJson(filePath) {
 }
 
 
-function runCollector() {
+async function runCollector() {
 
   const reportStore =
     readJson(REPORTS_PATH);
@@ -62,6 +65,13 @@ function runCollector() {
   console.log(
     `Last successful scan: ${
       scanState.lastSuccessfulScanAt || "never"
+    const fishingInWales =
+    await fetchFishingInWales();
+
+
+  console.log(
+    `Fishing in Wales fetched: ${fishingInWales.html.length} characters`
+  );
     }`
   );
 
