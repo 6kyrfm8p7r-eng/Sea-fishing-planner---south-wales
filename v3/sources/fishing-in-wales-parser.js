@@ -109,11 +109,43 @@ function classifyBassEvidence(text) {
     String(text || "")
       .toLowerCase();
 
-
   const offshore =
     /\b(kayak|charter|boat|afloat|offshore)\b/.test(
       value
     );
+
+
+  const prediction =
+    /\b(anticipated|expect|expected|should|could|look forward|prospects)\b/.test(
+      value
+    );
+
+
+  const shoreContext =
+    /\b(shore|shores|beach|pier|barrage|rock marks|from the rocks|off the rocks)\b/.test(
+      value
+    );
+
+
+  const catchEvidence =
+    /\b(caught|catch|catches|producing|productive)\b/.test(
+      value
+    );
+
+
+  const shoreCatch =
+    shoreContext &&
+    catchEvidence;
+
+
+  if (
+    offshore &&
+    shoreCatch
+  ) {
+
+    return "MIXED";
+
+  }
 
 
   if (offshore) {
@@ -123,12 +155,6 @@ function classifyBassEvidence(text) {
   }
 
 
-  const prediction =
-    /\b(anticipated|expect|expected|should|could|look forward|prospects)\b/.test(
-      value
-    );
-
-
   if (prediction) {
 
     return "PREDICTION";
@@ -136,22 +162,7 @@ function classifyBassEvidence(text) {
   }
 
 
-  const shoreContext =
-    /\b(shore|shores|beach|pier|barrage|rock marks|from the rocks|off the rocks)\b/.test(
-      value
-    ); 
-
-
-  const catchEvidence =
-    /\b(caught|catch|catches|producing|productive)\b/.test(
-      value
-    );
-
-
-  if (
-    shoreContext &&
-    catchEvidence
-  ) {
+  if (shoreCatch) {
 
     return "SHORE_CATCH";
 
@@ -159,6 +170,7 @@ function classifyBassEvidence(text) {
 
 
   return "GENERAL";
+
 
 }
 
