@@ -1250,21 +1250,28 @@
         100
       )
     );
-
-  }
-
-
-  /* =======================================================
-     PUBLIC API
-     ======================================================= */
-
   window.SeaPlannerBassActivity = {
 
     settings:
       SETTINGS,
 
+    sources:
+      REPORT_SOURCES,
+
     reports:
       REPORTS,
+
+    reportIdentityKey,
+
+    isSameReport,
+
+    isSameCatchEvent,
+
+    findDuplicateReport,
+
+    findSameCatchEvent,
+
+    ingestReport,
 
     isUsableReport,
 
@@ -1281,5 +1288,12 @@
     calculateOpportunityScore
 
   };
+  }
 
+
+  /* =======================================================
+     PUBLIC API
+     ======================================================= */
+
+ 
 })();
