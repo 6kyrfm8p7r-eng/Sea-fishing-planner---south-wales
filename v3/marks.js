@@ -874,7 +874,85 @@
       note: "Highly exposed surf and reef.",
       reason: "Potentially excellent bass water, but one of the marks where safety must dominate."
     }
+    /* =====================================================
+       ADDITIONAL SOUTH / SOUTH-WEST WALES MARKS
+       ===================================================== */
 
+    {
+      id: "cardiffBayBarrage",
+      name: "Cardiff Bay Barrage",
+      region: "Cardiff",
+      lat: 51.4474,
+      lon: -3.1658,
+      type: "high",
+      tide: "flood",
+      exposure: "sheltered",
+      swellMin: 0.1,
+      swellMax: 0.8,
+      periodMin: 3,
+      periodMax: 9,
+      windMin: 170,
+      windMax: 290,
+      note: "Barrage wall, deep tidal channel and outflow structure.",
+      reason: "Strong tidal movement, structure and outflows can concentrate bait and bass around the barrage."
+    },
+
+    {
+      id: "barryDocks",
+      name: "Barry Docks",
+      region: "Vale of Glamorgan",
+      lat: 51.3972,
+      lon: -3.2650,
+      type: "high",
+      tide: "flood",
+      exposure: "sheltered",
+      swellMin: 0.1,
+      swellMax: 0.8,
+      periodMin: 3,
+      periodMax: 9,
+      windMin: 160,
+      windMax: 290,
+      note: "Sheltered dock and harbour structure with deep water.",
+      reason: "Dock structure, tidal movement and sheltered water provide year-round fishing with documented bass potential."
+    },
+
+    {
+      id: "wormsHead",
+      name: "Worms Head",
+      region: "Gower",
+      lat: 51.5647,
+      lon: -4.3272,
+      type: "low",
+      tide: "ebb",
+      exposure: "very exposed",
+      swellMin: 0.2,
+      swellMax: 1.0,
+      periodMin: 5,
+      periodMax: 10,
+      windMin: 190,
+      windMax: 290,
+      note: "Highly exposed tidal headland with major cut-off risk.",
+      reason: "Exceptional rough-ground bass habitat and strong tidal movement, but access and sea state must remain within strict safety limits."
+    },
+
+    {
+      id: "burryHolms",
+      name: "Burry Holms",
+      region: "Gower",
+      lat: 51.6092,
+      lon: -4.3108,
+      type: "low",
+      tide: "ebb",
+      exposure: "very exposed",
+      swellMin: 0.2,
+      swellMax: 1.0,
+      periodMin: 5,
+      periodMax: 10,
+      windMin: 210,
+      windMax: 310,
+      note: "Tidal island and rock mark with fast-moving water and cut-off risk.",
+      reason: "Rock structure, gullies and strong tidal flow create excellent bass habitat around low water when access and sea state are safe."
+    }
   ];
 
 
