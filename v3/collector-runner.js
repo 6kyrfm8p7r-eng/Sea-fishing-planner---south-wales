@@ -10,13 +10,14 @@ const {
   fetchFishingInWales
 } =
   require("./sources/fishing-in-wales.js");
-const {
-  parseFishingInWales
-} =
-  require("./sources/fishing-in-wales-parser.js");
+
 const DATA_DIR =
   path.join(__dirname, "data");
-
+const {
+  parseFishingInWales,
+  classifyBassEvidence
+} =
+  require("./sources/fishing-in-wales-parser.js");
 const REPORTS_PATH =
   path.join(DATA_DIR, "bass-reports.json");
 
@@ -188,6 +189,33 @@ async function runCollector() {
 
   console.log(
     `Fishing in Wales source candidates: ${sourceCandidates.length}`
+  );
+
+  const evidenceBreakdown =
+    bassReports
+      .flatMap(
+        report =>
+          report.bassText.map(
+            text =>
+              classifyBassEvidence(text)
+          )
+      )
+      .reduce(
+        (counts, classification) => {
+
+          counts[classification] =
+            (counts[classification] || 0) + 1;
+
+          return counts;
+
+        },
+        {}
+      );
+
+
+  console.log(
+    "Bass evidence classifications:",
+    evidenceBreakdown
   );
   
   console.log(
