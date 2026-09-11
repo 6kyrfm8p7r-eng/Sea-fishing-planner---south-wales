@@ -1221,17 +1221,26 @@ const opportunityScore =
 
     }
 
+const score =
+  formatScore(
+    opportunity.score
+  );
 
-    const score =
-      formatScore(
-        opportunity.score
-      );
+
+const activity =
+  opportunity.bassActivity || null;
 
 
-    const confidence =
-      opportunityConfidence(
-        opportunity
-      );
+const opportunityScore =
+  opportunity.opportunityScore ??
+  opportunity.score;
+
+
+const confidence =
+  opportunityConfidence(
+    opportunity
+  );
+    
 
 
     const risk =
