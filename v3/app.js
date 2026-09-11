@@ -796,7 +796,7 @@ const opportunityScore =
           </div>
 
          </div>
-        <div
+        
          <div
           class="tide-grid"
           style="
