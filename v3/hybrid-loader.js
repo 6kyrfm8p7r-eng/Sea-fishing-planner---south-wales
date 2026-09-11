@@ -153,20 +153,29 @@ const BassActivity =
       : null;
 
   }
+function number(
+  value,
+  fallback = null
+) {
 
-
-  function number(
-    value,
-    fallback = null
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
   ) {
+    return fallback;
+  }
 
-    if (
-      value === null ||
-      value === undefined ||
-      value === ""
-    ) {
-      return fallback;
-    }
+  const parsed =
+    Number(value);
+
+  return Number.isFinite(parsed)
+    ? parsed
+    : fallback;
+
+}
+
+
 function addBassActivity(
   opportunity
 ) {
@@ -191,46 +200,30 @@ function addBassActivity(
     opportunity.mark?.id ||
     null;
 
-
   const activity =
     markId
-      ? BassActivity
-          .analyseMarkActivity(
-            markId
-          )
+      ? BassActivity.analyseMarkActivity(
+          markId
+        )
       : null;
 
-
   const opportunityScore =
-    BassActivity
-      .calculateOpportunityScore(
-        opportunity.score,
-        activity
-      );
-
+    BassActivity.calculateOpportunityScore(
+      opportunity.score,
+      activity
+    );
 
   return {
-
     ...opportunity,
 
     bassActivity:
       activity,
 
     opportunityScore
-
   };
 
 }
 
-    const parsed =
-      Number(value);
-
-
-    return Number.isFinite(parsed)
-      ? parsed
-      : fallback;
-
-  }
 
 
   function toRadians(degrees) {
