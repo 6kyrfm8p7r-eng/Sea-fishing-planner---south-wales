@@ -230,12 +230,13 @@ const LOCATION_ALIASES = [
     ]
   },
 
-  {
-    markId: "burryHolms",
-    aliases: [
-      "burry holms"
-    ]
-  },
+ {
+  markId: "burryHolms",
+  aliases: [
+    "burry holms",
+    "burry holmes"
+  ]
+},
 
 
   /* Carmarthenshire */
