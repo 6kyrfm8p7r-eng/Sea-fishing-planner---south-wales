@@ -706,10 +706,22 @@
       }
 
     }
-    const seenAt =
+    const nowDate =
       now instanceof Date
-        ? now.toISOString()
-        : new Date(now).toISOString();
+        ? now
+        : new Date(now);
+
+
+    const validNow =
+      !Number.isNaN(
+        nowDate.getTime()
+      );
+
+
+    const seenAt =
+      validNow
+        ? nowDate.toISOString()
+        : new Date().toISOString();
 
 
     const duplicate =
