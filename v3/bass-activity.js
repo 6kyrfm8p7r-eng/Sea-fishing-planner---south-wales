@@ -655,7 +655,7 @@
       sameSpecies &&
       differentSources &&
       sameCaughtState &&
-      sameNotes &&
+      notesSimilar &&
       withinSixHours
     );
     
