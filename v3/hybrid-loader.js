@@ -1700,36 +1700,39 @@ function addBassActivity(
 
         });
 
-
-    return {
+return {
 
       overall:
-        finalResults
-          .overall,
+        addBassActivity(
+          finalResults.overall
+        ),
 
       low:
-        finalResults
-          .low,
+        addBassActivity(
+          finalResults.low
+        ),
 
       high:
-        finalResults
-          .high,
+        addBassActivity(
+          finalResults.high
+        ),
 
       all:
-        finalResults
-          .all || [],
+        (finalResults.all || [])
+          .map(addBassActivity),
 
       lows:
-        finalResults
-          .lows || [],
+        (finalResults.lows || [])
+          .map(addBassActivity),
 
       highs:
-        finalResults
-          .highs || [],
+        (finalResults.highs || [])
+          .map(addBassActivity),
 
       screened,
 
       finalists,
+    
 
       diagnostics: {
 
