@@ -546,7 +546,108 @@
     }
 
   };
+    /* -----------------------------------------------------
+       ADDITIONAL SOUTH / SOUTH-WEST WALES MARKS
+       ----------------------------------------------------- */
 
+    cardiffBayBarrage: {
+
+      ...DEFAULT_PROFILE,
+
+      tideReference: "high",
+
+      primeBeforeHours: 2,
+      primeAfterHours: 2,
+
+      tideRangePreference: "mid",
+
+      dawnBoost: 5,
+      duskBoost: 7,
+      nightBoost: 4,
+
+      confidence: "medium",
+
+      sources: [
+        "SeaAngler",
+        "Fishing in Wales"
+      ]
+
+    },
+
+
+    barryDocks: {
+
+      ...DEFAULT_PROFILE,
+
+      tideReference: "high",
+
+      primeBeforeHours: 3,
+      primeAfterHours: 2,
+
+      tideRangePreference: "neutral",
+
+      dawnBoost: 5,
+      duskBoost: 7,
+      nightBoost: 5,
+
+      confidence: "medium",
+
+      sources: [
+        "Fishing in Wales",
+        "local fishing guides"
+      ]
+
+    },
+
+
+    wormsHead: {
+
+      ...DEFAULT_PROFILE,
+
+      tideReference: "low",
+
+      primeBeforeHours: 2,
+      primeAfterHours: 1,
+
+      tideRangePreference: "small",
+
+      dawnBoost: 7,
+      duskBoost: 8,
+      nightBoost: 2,
+
+      confidence: "medium",
+
+      sources: [
+        "Fishing in Wales",
+        "local fishing guides"
+      ]
+
+    },
+
+
+    burryHolms: {
+
+      ...DEFAULT_PROFILE,
+
+      tideReference: "low",
+
+      primeBeforeHours: 2,
+      primeAfterHours: 1,
+
+      tideRangePreference: "small",
+
+      dawnBoost: 7,
+      duskBoost: 8,
+      nightBoost: 2,
+
+      confidence: "medium",
+
+      sources: [
+        "Fishing in Wales",
+        "local fishing guides"
+      ]
+
+    },
 
   /* =======================================================
      PROFILE LOOKUP
