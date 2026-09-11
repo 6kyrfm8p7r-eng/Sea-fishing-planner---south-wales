@@ -746,13 +746,35 @@
     };
 
 
-    if (
-      sameCatch &&
-      !prepared.catchEventId
-    ) {
+    if (sameCatch) {
+
+      const catchEventId =
+        sameCatch.catchEventId ||
+        (
+          "catch-event-" +
+          String(
+            sameCatch.id ||
+            reportIdentityKey(
+              sameCatch
+            ) ||
+            (
+              normaliseIdentityValue(
+                sameCatch.markId
+              ) +
+              "-" +
+              new Date(
+                sameCatch.date
+              ).getTime()
+            )
+          )
+        );
+
+
+      sameCatch.catchEventId =
+        catchEventId;
 
       prepared.catchEventId =
-        sameCatch.catchEventId;
+        catchEventId;
 
     }
 
