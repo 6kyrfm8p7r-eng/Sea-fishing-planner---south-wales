@@ -50,7 +50,8 @@
 
   const Opportunities =
     window.SeaPlannerOpportunities;
-
+const BassActivity =
+  window.SeaPlannerBassActivity;
 
   if (
     !Marks ||
