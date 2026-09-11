@@ -1217,7 +1217,7 @@
     now = new Date()
   ) {
 
-     const reports =
+    const reports =
       getReportsForMark(
         markOrId,
         now
@@ -1248,19 +1248,47 @@
 
 
             /*
-             For a grouped catch event, keep only
-             the first report in the date-sorted list.
+             For a grouped catch event, use the report
+             from the strongest available source.
+
+             If source strength is equal, the first report
+             in the existing newest-first list wins.
             */
 
-            return (
-              allReports.findIndex(
+            const eventReports =
+              allReports.filter(
                 candidate =>
                   normaliseIdentityValue(
                     candidate.catchEventId
                   ) ===
                   eventId
-              ) ===
-              index
+              );
+
+
+            const strongestSourceWeight =
+              Math.max(
+                ...eventReports.map(
+                  candidate =>
+                    getSourceWeight(
+                      candidate
+                    )
+                )
+              );
+
+
+            const strongestReport =
+              eventReports.find(
+                candidate =>
+                  getSourceWeight(
+                    candidate
+                  ) ===
+                  strongestSourceWeight
+              );
+
+
+            return (
+              report ===
+              strongestReport
             );
 
           }
