@@ -543,18 +543,12 @@ function activityForOpportunity(
         opportunity
       );
 const activity =
-  activityForOpportunity(
-    opportunity
-  );
+  opportunity.bassActivity || null;
 
 
 const opportunityScore =
-  BassActivity
-    ? BassActivity.calculateOpportunityScore(
-        opportunity.score,
-        activity
-      )
-    : opportunity.score;
+  opportunity.opportunityScore ??
+  opportunity.score;
 
     const departure =
       opportunity
