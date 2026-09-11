@@ -537,7 +537,42 @@
 
     }
 
+    const candidateSourceId =
+      String(
+        candidate.sourceId || ""
+      )
+        .trim()
+        .toLowerCase();
 
+
+    if (candidateSourceId) {
+
+      const registeredSource =
+        REPORT_SOURCES.find(
+          source =>
+            String(
+              source.id || ""
+            )
+              .trim()
+              .toLowerCase() ===
+            candidateSourceId
+        );
+
+
+      if (
+        registeredSource &&
+        registeredSource.enabled === false
+      ) {
+
+        return {
+          action: "rejected",
+          reason: "source-disabled",
+          report: null
+        };
+
+      }
+
+    }
     const seenAt =
       now instanceof Date
         ? now.toISOString()
