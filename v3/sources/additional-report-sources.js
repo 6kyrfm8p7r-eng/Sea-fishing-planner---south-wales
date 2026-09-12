@@ -20,7 +20,10 @@ const STATIC_SOURCES = [
       "Angling Cymru",
 
     sourceUrl:
-      "https://www.anglingcymru.org.uk/match-reports"
+      "https://www.anglingcymru.org.uk/match-reports",
+
+    parserType:
+      "angling-cymru"
   },
 
   {
@@ -31,7 +34,10 @@ const STATIC_SOURCES = [
       "Angling Cymru South West",
 
     sourceUrl:
-      "https://www.anglingcymru.org.uk/sw-match-reports"
+      "https://www.anglingcymru.org.uk/sw-match-reports",
+
+    parserType:
+      "angling-cymru"
   },
 
   {
@@ -42,7 +48,10 @@ const STATIC_SOURCES = [
       "Ordinary Angler",
 
     sourceUrl:
-      "https://ordinaryangler.blogspot.com/search/label/Pembrokeshire"
+      "https://ordinaryangler.blogspot.com/search/label/Pembrokeshire",
+
+    parserType:
+      "blogger"
   }
 
 ];
@@ -151,6 +160,10 @@ function htmlToText(html) {
         ". "
       )
       .replace(
+        /<\/li>/gi,
+        ". "
+      )
+      .replace(
         /<\/div>/gi,
         " "
       )
@@ -186,16 +199,67 @@ const MONTHS = {
 };
 
 
+function normaliseYear(year) {
+
+  const value =
+    Number(year);
+
+
+  if (
+    !Number.isFinite(
+      value
+    )
+  ) {
+
+    return null;
+
+  }
+
+
+  if (
+    value >= 0 &&
+    value < 100
+  ) {
+
+    return (
+      value >= 70
+        ? 1900 + value
+        : 2000 + value
+    );
+
+  }
+
+
+  return value;
+
+}
+
+
 function isoDate(
   year,
   month,
   day
 ) {
 
+  const normalisedYear =
+    normaliseYear(
+      year
+    );
+
+
+  if (
+    !normalisedYear
+  ) {
+
+    return null;
+
+  }
+
+
   const date =
     new Date(
       Date.UTC(
-        Number(year),
+        normalisedYear,
         Number(month) - 1,
         Number(day)
       )
@@ -205,7 +269,13 @@ function isoDate(
   if (
     Number.isNaN(
       date.getTime()
-    )
+    ) ||
+    date.getUTCFullYear() !==
+      normalisedYear ||
+    date.getUTCMonth() !==
+      Number(month) - 1 ||
+    date.getUTCDate() !==
+      Number(day)
   ) {
 
     return null;
@@ -273,7 +343,7 @@ function parseDateFromText(value) {
 
   match =
     text.match(
-      /\b(\d{1,2})\/(\d{1,2})\/(20\d{2})\b/
+      /\b(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})\b/
     );
 
 
@@ -310,7 +380,7 @@ function parseDateFromText(value) {
 }
 
 
-function extractSections(
+function extractHeadingSections(
   page
 ) {
 
@@ -348,7 +418,7 @@ function extractSections(
       ? parseDateFromText(
           fullText.slice(
             0,
-            2000
+            2500
           )
         )
       : null;
@@ -399,7 +469,7 @@ function extractSections(
 
     const reportDate =
       parseDateFromText(
-        `${heading} ${text.slice(0, 900)}`
+        `${heading} ${text.slice(0, 1200)}`
       ) ||
       pageDate;
 
@@ -423,6 +493,260 @@ function extractSections(
 
 
   return sections;
+
+}
+
+
+function extractFlatDateSections(
+  page
+) {
+
+  const text =
+    htmlToText(
+      page?.html
+    );
+
+
+  if (!text) {
+    return [];
+  }
+
+
+  const datePattern =
+    /\b(?:\d{1,2}(?:st|nd|rd|th)?\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s*,?\s*20\d{2}|\d{1,2}\/\d{1,2}\/(?:\d{2}|20\d{2})|20\d{2}-\d{1,2}-\d{1,2})\b/gi;
+
+
+  const matches =
+    [
+      ...text.matchAll(
+        datePattern
+      )
+    ];
+
+
+  const sections = [];
+
+
+  for (
+    let index = 0;
+    index <
+    matches.length;
+    index++
+  ) {
+
+    const match =
+      matches[index];
+
+    const next =
+      matches[
+        index + 1
+      ];
+
+
+    const reportDate =
+      parseDateFromText(
+        match[0]
+      );
+
+
+    if (!reportDate) {
+      continue;
+    }
+
+
+    const start =
+      Math.max(
+        0,
+        match.index - 180
+      );
+
+    const end =
+      next
+        ? next.index
+        : Math.min(
+            text.length,
+            match.index + 5000
+          );
+
+
+    const sectionText =
+      text.slice(
+        start,
+        end
+      )
+        .trim();
+
+
+    const heading =
+      text.slice(
+        start,
+        Math.min(
+          text.length,
+          match.index +
+            match[0].length
+        )
+      )
+        .trim();
+
+
+    sections.push({
+
+      heading,
+
+      reportDate,
+
+      text:
+        sectionText
+
+    });
+
+  }
+
+
+  return sections;
+
+}
+
+
+function extractSections(
+  page
+) {
+
+  if (
+    page?.parserType ===
+    "angling-cymru"
+  ) {
+
+    const flatSections =
+      extractFlatDateSections(
+        page
+      );
+
+
+    if (
+      flatSections.length > 0
+    ) {
+
+      return flatSections;
+
+    }
+
+  }
+
+
+  return extractHeadingSections(
+    page
+  );
+
+}
+
+
+function isNegativeBassEvidence(
+  text
+) {
+
+  const value =
+    String(
+      text || ""
+    )
+      .toLowerCase();
+
+
+  return (
+    /\b(blanked|blank|no bass|not had a bass|failed to catch a bass|failed to catch bass|without a bass|not a sniff)\b/.test(
+      value
+    )
+  );
+
+}
+
+
+function isAdditionalSourceShoreCatch({
+  page,
+  section,
+  sentence
+}) {
+
+  const combined =
+    `${section.heading} ${section.text.slice(0, 650)} ${sentence}`;
+
+
+  if (
+    isNegativeBassEvidence(
+      combined
+    )
+  ) {
+
+    return false;
+
+  }
+
+
+  const normalClassification =
+    classifyBassEvidence(
+      combined
+    );
+
+
+  if (
+    normalClassification ===
+    "SHORE_CATCH"
+  ) {
+
+    return true;
+
+  }
+
+
+  if (
+    page.parserType ===
+    "angling-cymru"
+  ) {
+
+    /*
+     These pages are shore-match reports.
+     Confirmed result wording is sufficient
+     when the section explicitly mentions bass.
+    */
+
+    return (
+      /\bbass\b/i.test(
+        sentence
+      ) &&
+      /\b(caught|catch|weigh|weighed|weighing|with a bass|species of fish|species were caught|species of fish were caught)\b/i.test(
+        combined
+      )
+    );
+
+  }
+
+
+  if (
+    page.parserType ===
+    "blogger"
+  ) {
+
+    /*
+     First-person session reports often use
+     wording such as "had three bass".
+    */
+
+    return (
+      /\bbass\b/i.test(
+        sentence
+      ) &&
+      /\b(caught|landed|had|hooked|looking at my first bass|first bass)\b/i.test(
+        combined
+      ) &&
+      /\b(shore|beach|estuary|pier|rocks?|point|haven|dock|lawrenny|pembrokeshire)\b/i.test(
+        combined
+      )
+    );
+
+  }
+
+
+  return false;
 
 }
 
@@ -601,6 +925,9 @@ async function fetchAdditionalReportSources() {
 
           sourceUrl,
 
+          parserType:
+            "article",
+
           html,
 
           singleArticle:
@@ -623,6 +950,9 @@ async function fetchAdditionalReportSources() {
             "Garry Evans",
 
           sourceUrl,
+
+          parserType:
+            "article",
 
           html:
             "",
@@ -653,6 +983,9 @@ async function fetchAdditionalReportSources() {
 
       sourceUrl:
         GARRY_EVANS_INDEX_URL,
+
+      parserType:
+        "article",
 
       html:
         "",
@@ -716,6 +1049,10 @@ function extractAdditionalSourceCandidates(
       );
 
 
+    let pageCandidateCount =
+      0;
+
+
     for (
       const section of
       sections
@@ -743,27 +1080,24 @@ function extractAdditionalSourceCandidates(
         }
 
 
-        const contextLead =
-          section.text.slice(
-            0,
-            420
-          );
-
-
-        const classification =
-          classifyBassEvidence(
-            `${section.heading} ${contextLead} ${sentence}`
-          );
-
-
         if (
-          classification !==
-          "SHORE_CATCH"
+          !isAdditionalSourceShoreCatch({
+            page,
+            section,
+            sentence
+          })
         ) {
 
           continue;
 
         }
+
+
+        const contextLead =
+          section.text.slice(
+            0,
+            500
+          );
 
 
         const candidate = {
@@ -839,9 +1173,17 @@ function extractAdditionalSourceCandidates(
           candidate
         );
 
+
+        pageCandidateCount++;
+
       }
 
     }
+
+
+    console.log(
+      `Source diagnostic: ${page.sourceName} | ${page.html.length} chars | ${sections.length} dated sections | ${pageCandidateCount} shore-bass candidates`
+    );
 
   }
 
