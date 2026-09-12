@@ -40,7 +40,6 @@ const STATIC_SOURCES = [
       "angling-cymru"
   },
 
-  {
 {
   sourceId:
     "web-ordinary-angler-pembrokeshire",
