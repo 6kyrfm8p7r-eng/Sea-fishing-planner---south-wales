@@ -30,6 +30,7 @@ const LOCATION_ALIASES = [
     aliases: [
       "llantwit major",
       "llantwit major beach"
+      "llanwit major"
     ]
   },
 
@@ -75,6 +76,7 @@ const LOCATION_ALIASES = [
     aliases: [
       "ogmore",
       "ogmore by sea"
+      "ogmore deeps"
     ]
   },
 
@@ -158,6 +160,9 @@ const LOCATION_ALIASES = [
     aliases: [
       "swansea west pier",
       "west pier swansea"
+      "swanasea west pier"
+      "swansea pier"
+      "swansea peir"
     ]
   },
 
@@ -166,6 +171,9 @@ const LOCATION_ALIASES = [
     aliases: [
       "mumbles",
       "the mumbles"
+      "mumbles pier"
+      "mumble pier"
+      "mumbles head"
     ]
   },
 
@@ -405,10 +413,68 @@ function findLocationMatches({
 
   }
 
+  /*
+   If one matched alias is simply contained inside
+   a longer, more specific matched alias, keep the
+   more specific mark.
 
-  return matches;
+   Example:
+   "Burry Port North Channel" should not also become
+   an ambiguous "Burry Port" match.
+
+   Separate locations such as Mumbles + Burry Holms
+   remain genuinely ambiguous.
+  */
+
+  const specificMatches =
+    matches.filter(
+      match => {
+
+        const current =
+          normaliseText(
+            match.alias
+          );
+
+
+        return !matches.some(
+          other => {
+
+            if (
+              other === match ||
+              other.markId ===
+                match.markId
+            ) {
+
+              return false;
+
+            }
+
+
+            const competing =
+              normaliseText(
+                other.alias
+              );
+
+
+            return (
+              competing.length >
+                current.length &&
+              competing.includes(
+                current
+              )
+            );
+
+          }
+        );
+
+      }
+    );
+
+
+  return specificMatches;
 
 }
+
 
 
 function mapCatchLocation(
