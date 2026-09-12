@@ -14,6 +14,13 @@ const {
   fetchFishingInWales
 } =
   require("./sources/fishing-in-wales.js");
+const {
+  fetchAdditionalReportSources,
+  extractAdditionalSourceCandidates
+} =
+  require(
+    "./sources/additional-report-sources.js"
+  );
 
 const DATA_DIR =
   path.join(__dirname, "data");
@@ -234,9 +241,123 @@ async function runCollector() {
                 )
           )
       );
-    const mappedCandidates =
+    /*
+   Additional public shore-report sources.
+   Extraction is allowed across their available
+   history for diagnostics, but only <=30 day
+   candidates can enter the live feed.
+  */
+
+  const additionalPages =
+    await fetchAdditionalReportSources();
+
+
+  for (
+    const page of
+    additionalPages
+  ) {
+
+    if (page.error) {
+
+      console.log(
+        `Source fetch failed: ${page.sourceName} — ${page.error}`
+      );
+
+    }
+
+  }
+
+
+  const additionalSourceCandidates =
+    extractAdditionalSourceCandidates(
+      additionalPages
+    );
+
+
+  const recentAdditionalSourceCandidates =
+    additionalSourceCandidates.filter(
+      candidate => {
+
+        if (!candidate.date) {
+          return false;
+        }
+
+
+        const candidateDate =
+          new Date(
+            `${candidate.date}T00:00:00Z`
+          );
+
+
+        return (
+          !Number.isNaN(
+            candidateDate.getTime()
+          ) &&
+          candidateDate <= now &&
+          candidateDate >=
+            thirtyDaysAgo
+        );
+
+      }
+    );
+
+
+  const allSourceCandidates = [
+
+    ...sourceCandidates,
+
+    ...recentAdditionalSourceCandidates
+
+  ];
+
+
+  console.log(
+    `Additional parsed shore-catch candidates: ${additionalSourceCandidates.length}`
+  );
+
+
+  console.log(
+    `Additional candidates within 30 days: ${recentAdditionalSourceCandidates.length}`
+  );
+
+
+  const additionalSourceCounts =
+    additionalSourceCandidates
+      .reduce(
+        (
+          counts,
+          candidate
+        ) => {
+
+          const key =
+            candidate.sourceName ||
+            candidate.sourceId ||
+            "Unknown";
+
+
+          counts[key] =
+            (
+              counts[key] ||
+              0
+            ) + 1;
+
+
+          return counts;
+
+        },
+        {}
+      );
+
+
+  console.log(
+    "Additional source counts:",
+    additionalSourceCounts
+  );
+
+
+  const mappedCandidates =
     mapCatchLocations(
-      sourceCandidates
+      allSourceCandidates
     );
 
 
@@ -248,11 +369,11 @@ async function runCollector() {
     );
 
   /* =======================================================
-     BASS ACTIVITY CANDIDATE CONVERSION
+        BASS ACTIVITY CANDIDATE CONVERSION
 
-     Diagnostic only.
      Only recent, mapped shore-catch evidence reaches here.
-     This does NOT write to bass-reports.json.
+     Candidates are normalised here before the persistence
+     and fingerprint-deduplication stage below.
      ======================================================= */
 
   const bassActivityCandidates =
@@ -298,11 +419,12 @@ async function runCollector() {
 
                 sourceId:
                   candidate.sourceId,
-
                 sourceType:
+                  candidate.sourceType ||
                   "website",
 
                 sourceName:
+                  candidate.sourceName ||
                   "Fishing in Wales",
 
                 externalPostId:
@@ -680,6 +802,13 @@ async function runCollector() {
 
   console.log(
     `Fishing in Wales source candidates: ${sourceCandidates.length}`
+  );
+  console.log(
+    `Additional source candidates within 30 days: ${recentAdditionalSourceCandidates.length}`
+  );
+
+  console.log(
+    `Total live source candidates: ${allSourceCandidates.length}`
   );
   
   const evidenceBreakdown =
