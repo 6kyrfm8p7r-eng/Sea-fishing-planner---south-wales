@@ -41,18 +41,24 @@ const STATIC_SOURCES = [
   },
 
   {
-    sourceId:
-      "web-ordinary-angler-pembrokeshire",
+{
+  sourceId:
+    "web-ordinary-angler-pembrokeshire",
 
-    sourceName:
-      "Ordinary Angler",
+  sourceName:
+    "Ordinary Angler",
 
-    sourceUrl:
-      "https://ordinaryangler.blogspot.com/search/label/Pembrokeshire",
+  sourceUrl:
+    "https://ordinaryangler.blogspot.com/feeds/posts/default?alt=atom&max-results=25",
 
-    parserType:
-      "blogger"
-  }
+  fallbackUrls: [
+    "https://ordinaryangler.blogspot.com/feeds/posts/default?alt=rss&max-results=25",
+    "https://ordinaryangler.blogspot.com/search/label/Pembrokeshire"
+  ],
+
+  parserType:
+    "blogger"
+}
 
 ];
 
@@ -60,36 +66,107 @@ const STATIC_SOURCES = [
 const GARRY_EVANS_INDEX_URL =
   "https://garryevans.co.uk/blogs";
 
+async function fetchHtml(
+  url,
+  fallbackUrls = []
+) {
 
-async function fetchHtml(url) {
+  const urls = [
+    url,
+    ...fallbackUrls
+  ];
 
-  const response =
-    await fetch(
-      url,
-      {
-        headers: {
-          "user-agent":
-            "BassFinderWales/1.0"
-        },
 
-        signal:
-          AbortSignal.timeout(
-            15000
-          )
+  let lastError = null;
+
+
+  for (
+    let index = 0;
+    index < urls.length;
+    index++
+  ) {
+
+    const candidateUrl =
+      urls[index];
+
+
+    try {
+
+      const response =
+        await fetch(
+          candidateUrl,
+          {
+            headers: {
+              "user-agent":
+                "Mozilla/5.0 (compatible; BassFinderWales/1.0; +https://github.com/6kyrfm8p7r-eng/Sea-fishing-planner---south-wales)",
+
+              "accept":
+                "application/atom+xml, application/rss+xml, application/xml, text/xml, text/html;q=0.9, */*;q=0.8"
+            },
+
+            signal:
+              AbortSignal.timeout(
+                15000
+              )
+          }
+        );
+
+
+      if (!response.ok) {
+
+        lastError =
+          new Error(
+            `${response.status} ${response.statusText}`
+          );
+
+
+        console.log(
+          `Fetch attempt failed: ${candidateUrl} — ${response.status} ${response.statusText}`
+        );
+
+
+        continue;
+
       }
-    );
 
 
-  if (!response.ok) {
+      const html =
+        await response.text();
 
-    throw new Error(
-      `${response.status} ${response.statusText}`
-    );
+
+      console.log(
+        `Fetch succeeded: ${candidateUrl} — ${html.length} chars`
+      );
+
+
+      return {
+        html,
+        resolvedUrl:
+          candidateUrl
+      };
+
+    }
+    catch (error) {
+
+      lastError =
+        error;
+
+
+      console.log(
+        `Fetch attempt failed: ${candidateUrl} — ${error?.message || String(error)}`
+      );
+
+    }
 
   }
 
 
-  return response.text();
+  throw (
+    lastError ||
+    new Error(
+      "All source URLs failed"
+    )
+  );
 
 }
 
@@ -614,6 +691,106 @@ function extractSections(
 
   if (
     page?.parserType ===
+    "blogger" &&
+    /<(feed|rss)\b/i.test(
+      String(
+        page?.html || ""
+      )
+    )
+  ) {
+
+    const entries =
+      [
+        ...String(
+          page.html
+        ).matchAll(
+          /<(?:entry|item)\b[\s\S]*?<\/(?:entry|item)>/gi
+        )
+      ];
+
+
+    const sections = [];
+
+
+    for (
+      const entry of
+      entries
+    ) {
+
+      const raw =
+        entry[0];
+
+
+      const titleMatch =
+        raw.match(
+          /<title\b[^>]*>([\s\S]*?)<\/title>/i
+        );
+
+
+      const dateMatch =
+        raw.match(
+          /<(?:published|updated|pubDate)\b[^>]*>([\s\S]*?)<\/(?:published|updated|pubDate)>/i
+        );
+
+
+      const heading =
+        htmlToText(
+          titleMatch?.[1] || ""
+        );
+
+
+      const text =
+        htmlToText(
+          raw
+        );
+
+
+      const reportDate =
+        parseDateFromText(
+          heading
+        ) ||
+        (
+          dateMatch?.[1]
+            ? new Date(
+                htmlToText(
+                  dateMatch[1]
+                )
+              )
+                .toISOString()
+                .slice(
+                  0,
+                  10
+                )
+            : null
+        );
+
+
+      if (
+        reportDate
+      ) {
+
+        sections.push({
+
+          heading,
+
+          reportDate,
+
+          text
+
+        });
+
+      }
+
+    }
+
+
+    return sections;
+
+  }
+
+
+  if (
+    page?.parserType ===
     "angling-cymru"
   ) {
 
@@ -844,25 +1021,30 @@ async function fetchAdditionalReportSources() {
 
     try {
 
-      const html =
-        await fetchHtml(
-          source.sourceUrl
-        );
+const fetched =
+  await fetchHtml(
+    source.sourceUrl,
+    source.fallbackUrls || []
+  );
 
 
-      pages.push({
+pages.push({
 
-        ...source,
+  ...source,
 
-        html,
+  sourceUrl:
+    fetched.resolvedUrl,
 
-        singleArticle:
-          false,
+  html:
+    fetched.html,
 
-        error:
-          null
+  singleArticle:
+    false,
 
-      });
+  error:
+    null
+
+});
 
     }
     catch (error) {
