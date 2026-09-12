@@ -29,7 +29,7 @@ const LOCATION_ALIASES = [
     markId: "llantwitMajor",
     aliases: [
       "llantwit major",
-      "llantwit major beach"
+      "llantwit major beach",
       "llanwit major"
     ]
   },
@@ -75,7 +75,7 @@ const LOCATION_ALIASES = [
     markId: "ogmore",
     aliases: [
       "ogmore",
-      "ogmore by sea"
+      "ogmore by sea",
       "ogmore deeps"
     ]
   },
@@ -159,9 +159,9 @@ const LOCATION_ALIASES = [
     markId: "swanseaWestPier",
     aliases: [
       "swansea west pier",
-      "west pier swansea"
-      "swanasea west pier"
-      "swansea pier"
+      "west pier swansea",
+      "swanasea west pier",
+      "swansea pier",
       "swansea peir"
     ]
   },
@@ -170,9 +170,9 @@ const LOCATION_ALIASES = [
     markId: "mumbles",
     aliases: [
       "mumbles",
-      "the mumbles"
-      "mumbles pier"
-      "mumble pier"
+      "the mumbles",
+      "mumbles pier",
+      "mumble pier",
       "mumbles head"
     ]
   },
